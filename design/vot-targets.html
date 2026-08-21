@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOT Coordinated Operations — Target Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+:root{
+  --ink:#0d1016; --ink-2:#141922; --ink-3:#1b2230; --line:#2a3342; --line-2:#38445a;
+  --fg:#eef2f7; --fg-2:#9aa7bb; --fg-3:#6b7789;
+  --prio:#ff7a3d; --soft:#3fd2c7; --nice:#8b7bd8; --chapter:#f4d03f;
+  --land:#1a212c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--ink); color:var(--fg);
+  font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:14px;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+a{color:var(--soft);text-decoration:none}
+a:hover{color:var(--fg)}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.app{display:grid;grid-template-rows:56px 1fr;height:100%}
+
+header{
+  display:flex;align-items:center;gap:24px;padding:0 20px;
+  border-bottom:1px solid var(--line);background:var(--ink-2);
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em}
+.brand .mark{width:22px;height:22px;background:var(--prio);display:grid;place-items:center;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#0d1016}
+.brand span.sub{color:var(--fg-3);font-weight:500;letter-spacing:.06em;font-size:11px;text-transform:uppercase}
+.levels{display:flex;gap:0;margin-left:auto;border:1px solid var(--line);}
+.levels button{
+  background:transparent;border:0;border-right:1px solid var(--line);color:var(--fg-2);
+  font:inherit;font-size:12px;padding:7px 14px;cursor:pointer;letter-spacing:.02em;
+}
+.levels button:last-child{border-right:0}
+.levels button[aria-pressed="true"]{background:var(--fg);color:var(--ink);font-weight:600}
+.cycle{color:var(--fg-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+
+.views{display:flex;border:1px solid var(--line)}
+.views button{background:transparent;border:0;border-right:1px solid var(--line);color:var(--fg-2);
+  font:inherit;font-size:12px;padding:7px 15px;cursor:pointer;letter-spacing:.02em}
+.views button:last-child{border-right:0}
+.views button[aria-pressed="true"]{background:var(--prio);color:#0d1016;font-weight:600}
+main{display:grid;grid-template-columns:236px 1fr 0;min-height:0;transition:grid-template-columns .28s cubic-bezier(.4,0,.2,1)}
+main.open{grid-template-columns:236px 1fr 392px}
+
+/* ---- filters ---- */
+.filters{border-right:1px solid var(--line);background:var(--ink-2);overflow-y:auto;padding:18px 0}
+.fgroup{padding:0 18px 20px}
+.fgroup h3{margin:0 0 10px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+label.chk{display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer;color:var(--fg-2);font-size:13px}
+label.chk:hover{color:var(--fg)}
+label.chk input{appearance:none;width:14px;height:14px;border:1px solid var(--line-2);background:var(--ink-3);
+  display:grid;place-items:center;cursor:pointer;flex:none}
+label.chk input:checked{background:var(--fg);border-color:var(--fg)}
+label.chk input:checked::after{content:'';width:7px;height:4px;border-left:1.6px solid var(--ink);
+  border-bottom:1.6px solid var(--ink);transform:rotate(-45deg) translateY(-1px)}
+.swatch{width:11px;height:11px;flex:none;border:1px solid rgba(0,0,0,.35)}
+.fdiv{height:1px;background:var(--line);margin:0 18px 20px}
+.fnote{padding:0 18px;color:var(--fg-3);font-size:11.5px;line-height:1.5}
+.linkrow{display:flex;gap:14px;padding:0 18px 18px}
+.linkrow button{background:none;border:0;color:var(--fg-3);font:inherit;font-size:11.5px;
+  cursor:pointer;padding:0;border-bottom:1px solid var(--line-2)}
+.linkrow button:hover{color:var(--fg)}
+
+/* ---- map ---- */
+.mapwrap{position:relative;min-width:0;overflow:hidden;background:
+  radial-gradient(120% 90% at 50% 0%, #131923 0%, var(--ink) 70%)}
+svg#map{display:block;width:100%;height:100%}
+.state{stroke:var(--ink);stroke-width:.9;cursor:pointer;transition:fill .15s}
+.state:hover{stroke:var(--fg);stroke-width:1.4}
+.state.sel{stroke:var(--fg);stroke-width:2}
+.state.dim{opacity:.22}
+.slabel{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:500;
+  fill:#fff;pointer-events:none;text-anchor:middle;
+  paint-order:stroke;stroke:rgba(13,16,22,.55);stroke-width:2.5px}
+.chapdot{pointer-events:none}
+.campus{cursor:pointer}
+.stats{position:absolute;left:20px;bottom:18px;display:flex;gap:0;border:1px solid var(--line);
+  background:rgba(13,16,22,.86);backdrop-filter:blur(6px)}
+.stats div{padding:10px 18px;border-right:1px solid var(--line)}
+.stats div:last-child{border-right:0}
+.stats .k{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-3)}
+.stats .v{font-size:19px;font-weight:600;margin-top:3px}
+.hint{position:absolute;right:20px;bottom:18px;color:var(--fg-3);font-size:11px}
+.statehdr{position:absolute;left:20px;top:18px;display:flex;align-items:center;gap:12px;
+  background:rgba(13,16,22,.9);border:1px solid var(--line);padding:8px 8px 8px 12px;backdrop-filter:blur(6px)}
+.statehdr .nm{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.statehdr .sb{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--fg-3);margin-top:2px}
+.statehdr button{background:transparent;border:1px solid var(--line-2);color:var(--fg-2);
+  font:inherit;font-size:11.5px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.statehdr button:hover{color:var(--fg);border-color:var(--fg-2)}
+.cd{stroke:#0d1016;stroke-width:1;cursor:pointer}
+.cd:hover{stroke:#fff;stroke-width:1.6}
+.cdlabel{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;fill:#fff;
+  pointer-events:none;text-anchor:middle;paint-order:stroke;stroke:rgba(13,16,22,.75);stroke-width:3px}
+.loading{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);color:var(--fg-3);
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;pointer-events:none}
+.cdkey{position:absolute;left:20px;bottom:18px;background:rgba(13,16,22,.9);border:1px solid var(--line);
+  padding:10px 13px;backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:7px}
+.cdkey div{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--fg-2)}
+.cdkey i{width:11px;height:11px;flex:none;display:block}
+#tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--ink);
+  padding:5px 9px;font-size:11.5px;font-weight:600;opacity:0;transition:opacity .1s;white-space:nowrap}
+
+/* ---- quick facts ---- */
+.factwrap{display:none;overflow-y:auto;overflow-x:hidden;min-width:0;min-height:0;background:var(--ink)}
+main.factview{grid-template-columns:236px 1fr 0}
+main.factview .panel{display:none}
+main.factview .mapwrap{display:none}
+main.factview .factwrap{display:block}
+.fhead{padding:24px 30px 6px}
+.fhead h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.fhead p{margin:8px 0 0;color:var(--fg-3);font-size:12.5px;max-width:60ch;line-height:1.55}
+.feed{padding:12px 30px 40px;display:flex;flex-direction:column;max-width:840px}
+.item{padding:20px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.scope{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:11px}
+.scope button{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:.04em;
+  padding:3.5px 7px;border:1px solid var(--line-2);background:transparent;color:var(--fg-2);cursor:pointer}
+.scope button:hover{color:var(--fg);border-color:var(--fg-2)}
+.scope button.nat{border-color:transparent;background:var(--ink-3);color:var(--fg-2);cursor:default}
+.scope .topic{margin-left:auto;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--fg-3);font-weight:600}
+.item h3{margin:0 0 7px;font-size:16.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+.item p{margin:0;color:var(--fg-2);font-size:14px;line-height:1.6;max-width:70ch;text-wrap:pretty}
+.item .use{margin-top:11px;font-size:11.5px;color:var(--fg-3)}
+.item .use b{color:var(--fg-2);font-weight:500}
+.dgrp{margin-bottom:14px}
+.dgrp .st{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--fg);
+  letter-spacing:.06em;padding:0 0 4px;font-weight:600}
+.dgrp label.chk{padding:3px 0 3px 2px;font-size:12.5px}
+.dgrp label.chk .cd{font-family:'IBM Plex Mono',monospace;color:var(--fg-2)}
+.factnote{margin:0 30px 6px;padding:11px 14px;border:1px solid var(--line);background:var(--ink-2);
+  color:var(--fg-2);font-size:12px;line-height:1.5;max-width:840px}
+/* ---- calendar ---- */
+.calwrap{display:none;overflow-y:auto;overflow-x:hidden;min-width:0;min-height:0;background:var(--ink)}
+main.calview{grid-template-columns:236px 1fr 0}
+main.calview .panel{display:none}
+main.calview .mapwrap{display:none}
+main.calview .calwrap{display:block}
+.calhead{display:flex;align-items:baseline;gap:14px;padding:22px 26px 4px}
+.calhead h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.calhead .c{color:var(--fg-3);font-size:12px}
+.month{padding:18px 26px 4px}
+.month h3{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--fg-2);font-weight:600}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:1px}
+.dow span{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-3);
+  padding:0 0 5px 2px}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line)}
+.cell{background:var(--ink-2);min-width:0;min-height:104px;padding:6px 6px 8px;display:flex;flex-direction:column;gap:4px}
+.cell.out{background:#101419}
+.cell .n{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--fg-3);
+  align-self:flex-start;padding:1px 3px}
+.cell.has .n{color:var(--fg)}
+.evc{display:flex;gap:6px;align-items:flex-start;background:var(--ink-3);border:0;padding:5px 6px;
+  cursor:pointer;text-align:left;font:inherit;width:100%;border-left:2px solid transparent}
+.evc:hover{background:#232c3a}
+.evc .st{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:var(--fg-3);flex:none;padding-top:1px}
+.evc .tt{font-size:11px;line-height:1.25;color:var(--fg);font-weight:500;min-width:0;overflow-wrap:anywhere}
+.callegend{display:flex;flex-wrap:wrap;gap:16px;padding:16px 26px 34px;border-top:1px solid var(--line);margin-top:20px}
+.callegend div{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--fg-2)}
+.callegend i{width:10px;height:10px;display:block}
+.ftally{display:flex;justify-content:space-between;font-size:13px;color:var(--fg-2);padding:5px 0}
+.ftally b{font-family:'IBM Plex Mono',monospace;color:var(--fg);font-weight:500}
+/* ---- detail panel ---- */
+.panel{border-left:1px solid var(--line);background:var(--ink-2);overflow-y:auto;min-width:0}
+main:not(.open) .panel{visibility:hidden}
+.ptop{padding:20px 22px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--ink-2);z-index:2}
+.ptop .row{display:flex;align-items:flex-start;gap:12px}
+.ptop h2{margin:0;font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.ptop .abbr{font-family:'IBM Plex Mono',monospace;color:var(--fg-3);font-size:12px;margin-top:5px}
+.close{margin-left:auto;background:none;border:1px solid var(--line);color:var(--fg-2);
+  width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;flex:none}
+.close:hover{color:var(--fg);border-color:var(--fg-2)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.tag{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+  padding:3.5px 8px;border:1px solid var(--line-2);color:var(--fg-2)}
+.tag.on{border-color:transparent;color:#0d1016}
+.psec{padding:18px 22px;border-bottom:1px solid var(--line)}
+.psec h4{margin:0 0 12px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--fg-3);font-weight:600}
+.chapter{display:flex;align-items:center;gap:11px}
+.chapter .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.chapter .t{font-weight:600;font-size:15px}
+.chapter .m{color:var(--fg-3);font-size:12px;margin-top:2px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+.metric{background:var(--ink-2);padding:13px 14px}
+.metric .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-3)}
+.metric .v{font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:4px}
+.metric .d{font-size:11px;color:var(--fg-3);margin-top:3px}
+.bar{height:3px;background:var(--ink-3);margin-top:9px;overflow:hidden}
+.bar i{display:block;height:100%}
+.ev{display:flex;gap:13px;padding:11px 0;border-top:1px solid var(--line)}
+.ev:first-of-type{border-top:0;padding-top:0}
+.ev .date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--prio);
+  width:52px;flex:none;line-height:1.35;font-weight:500}
+.ev .t{font-weight:600;font-size:13.5px;line-height:1.3}
+.ev .m{color:var(--fg-3);font-size:11.5px;margin-top:3px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 7px;
+  border:1px solid var(--line-2);color:var(--fg-2)}
+.chip b{font-family:'IBM Plex Sans';font-weight:600}
+.plist{display:flex;flex-direction:column;gap:9px}
+.plist .p{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--fg-2)}
+.plist .p b{color:var(--fg);font-weight:500}
+.empty{color:var(--fg-3);font-size:12.5px;font-style:italic}
+.pfoot{padding:18px 22px 28px;display:flex;gap:8px}
+.pfoot button{flex:1;background:var(--fg);color:var(--ink);border:0;font:inherit;font-weight:600;
+  font-size:12.5px;padding:9px;cursor:pointer}
+.pfoot button.ghost{background:transparent;color:var(--fg-2);border:1px solid var(--line-2)}
+.pfoot button.ghost:hover{color:var(--fg)}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-track{background:var(--ink)}
+::-webkit-scrollbar-thumb{background:var(--line)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><div class="mark">V</div>Voters&nbsp;of&nbsp;Tomorrow <span class="sub">2026 Operations</span></div>
+    <div class="cycle" style="display:none"></div>
+    <div class="views" id="views">
+      <button data-view="map" aria-pressed="true">Map</button>
+      <button data-view="cal" aria-pressed="false">Calendar</button>
+      <button data-view="facts" aria-pressed="false">Quick Facts</button>
+    </div>
+    <div class="levels" id="levels" style="margin-left:0">
+      <button data-level="states" aria-pressed="true">States</button>
+      <button data-level="districts" aria-pressed="false">Districts</button>
+      <button data-level="campuses" aria-pressed="false">Campuses</button>
+    </div>
+  </header>
+  <main id="main">
+    <aside class="filters" id="filters"></aside>
+    <aside class="filters" id="calfilters" style="display:none"></aside>
+    <aside class="filters" id="factfilters" style="display:none"></aside>
+    <div class="mapwrap">
+      <svg id="map"></svg>
+      <div id="tip"></div>
+      <div class="stats" id="stats"></div>
+      <div class="hint">Click a state for detail</div>
+      <div id="overlay"></div>
+    </div>
+    <div class="calwrap" id="calwrap"></div>
+    <div class="factwrap" id="factwrap"></div>
+    <aside class="panel" id="panel"></aside>
+  </main>
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const C = {ink:'#0d1016', land:'#1a212c', chapter:'#f4d03f'};
+const TIER = {
+  hard:{label:'Hard Target',        color:'#ff7a3d'},
+  soft:{label:'Soft Target',        color:'#3fd2c7'},
+  dev: {label:'Development Target', color:'#8b7bd8'}
+};
+const TORDER=['soft','hard','dev'];
+// every state's full target mix — many states carry two or three at once
+const TARGETS={
+  AZ:['hard','dev'], GA:['hard','soft'], MI:['hard'], NC:['hard','dev'],
+  NV:['hard','soft','dev'], PA:['hard'], WI:['hard','dev'], TX:['hard','soft','dev'],
+  FL:['soft','dev'], OH:['soft'], VA:['soft'], MN:['soft','dev'], CO:['soft'],
+  NH:['soft','dev'], NM:['soft','dev'], IA:['soft'], ME:['soft'], CA:['soft','dev'],
+  NJ:['soft','dev'], KS:['dev'], MO:['dev'], NY:['dev'], IL:['dev'], WA:['dev'],
+  MA:['dev'], OR:['dev'], MD:['dev'], TN:['dev'], IN:['dev'], MT:['dev'], AK:['dev'],
+  UT:['dev'], SC:['dev'], LA:['dev'], KY:['dev'], CT:['dev'], NE:['dev'], OK:['dev'], AL:['dev']
+};
+
+// tier, offices, chapter, districts, partners
+const S = {
+  AZ:['priority',['gov','hou'],'established',['AZ-01','AZ-04','AZ-06'],['Arizona Youth Vote','Chispa AZ']],
+  GA:['priority',['sen','gov','hou'],'established',['GA-01','GA-02','GA-13'],['New Georgia Project','Georgia Shift']],
+  MI:['priority',['sen','gov','hou'],'established',['MI-07','MI-08','MI-10'],['MI Student Power','Detroit Action']],
+  NC:['priority',['sen','hou'],'established',['NC-01','NC-06','NC-14'],['NC Black Alliance','Down Home NC']],
+  NV:['priority',['gov','hou'],'established',['NV-01','NV-03','NV-04'],['Silver State Voices']],
+  PA:['priority',['gov','hou'],'established',['PA-07','PA-08','PA-10','PA-17'],['PA Youth Vote','Make the Road PA']],
+  WI:['priority',['gov','hou'],'established',['WI-01','WI-03'],['WI Youth Power','BLOC']],
+  TX:['priority',['sen','gov','hou'],'established',['TX-15','TX-28','TX-34'],['MOVE Texas','Jolt Initiative']],
+  FL:['soft',['gov','hou'],'established',['FL-13','FL-27'],['Florida Rising','Dream Defenders']],
+  OH:['soft',['sen','gov','hou'],'established',['OH-01','OH-09','OH-13'],['Ohio Student Assoc.']],
+  VA:['soft',['hou'],'established',['VA-02','VA-07'],['New Virginia Majority']],
+  MN:['soft',['sen','gov','hou'],'established',['MN-02'],['MN Youth Collective']],
+  CO:['soft',['gov','hou'],'established',['CO-08'],['New Era Colorado']],
+  NH:['soft',['sen','gov','hou'],'building',['NH-01'],['NH Youth Movement']],
+  NM:['soft',['sen','gov'],'building',[],['NM Native Vote']],
+  IA:['soft',['sen','gov','hou'],'building',['IA-01','IA-03'],[]],
+  ME:['soft',['sen','gov','hou'],'building',['ME-02'],['Maine Youth Action']],
+  KS:['nice',['gov','hou'],'none',['KS-03'],[]],
+  MO:['nice',['hou'],'building',['MO-02'],[]],
+  CA:['nice',['gov','hou'],'established',['CA-13','CA-22','CA-41','CA-45'],['CA Calls','Power CA Action']],
+  NY:['nice',['gov','hou'],'established',['NY-04','NY-17','NY-19'],['NY Youth Agenda']],
+  IL:['nice',['gov','hou'],'established',['IL-13','IL-17'],['Chicago Votes']],
+  WA:['nice',['gov','hou'],'established',['WA-03','WA-08'],['WA Youth Alliance']],
+  MA:['nice',['sen','gov'],'established',[],['MassVOTE']],
+  OR:['nice',['gov','hou'],'established',['OR-05','OR-06'],['Next Up Action']],
+  MD:['nice',['gov','hou'],'established',[],[]],
+  NJ:['nice',['hou'],'established',['NJ-07'],['NJ Youth Power']],
+  TN:['nice',['gov','hou'],'building',[],['The Equity Alliance']],
+  IN:['nice',['gov','hou'],'none',['IN-01'],[]],
+  MT:['nice',['gov','hou'],'none',['MT-01'],[]],
+  AK:['nice',['sen','gov'],'none',['AK-00'],[]],
+  UT:['nice',['gov','hou'],'building',['UT-04'],[]],
+  SC:['nice',['sen','gov'],'none',[],[]],
+  LA:['nice',['sen','gov'],'none',['LA-06'],[]],
+  KY:['nice',['hou'],'none',[],[]],
+  CT:['nice',['gov','hou'],'building',['CT-05'],[]],
+  NE:['nice',['gov','hou'],'none',['NE-02'],[]],
+  OK:['nice',['gov'],'none',[],[]],
+  AL:['nice',['sen','gov'],'none',['AL-02'],[]]
+};
+const TMAP={priority:'hard',soft:'soft',nice:'dev'};
+const CAMPUS = [
+  ['Arizona State',33.42,-111.93,'AZ',1,'priority'],['U of Arizona',32.23,-110.95,'AZ',1,'priority'],
+  ['U of Georgia',33.95,-83.38,'GA',1,'priority'],['Georgia State',33.75,-84.39,'GA',1,'priority'],
+  ['U of Michigan',42.28,-83.74,'MI',1,'priority'],['Michigan State',42.72,-84.48,'MI',1,'priority'],
+  ['Wayne State',42.36,-83.07,'MI',0,'priority'],
+  ['UNC Chapel Hill',35.91,-79.05,'NC',1,'priority'],['NC State',35.78,-78.68,'NC',1,'priority'],
+  ['UNLV',36.11,-115.14,'NV',1,'priority'],['U of Nevada Reno',39.54,-119.82,'NV',0,'priority'],
+  ['Penn State',40.80,-77.86,'PA',1,'priority'],['Temple',39.98,-75.16,'PA',1,'priority'],
+  ['UW–Madison',43.08,-89.40,'WI',1,'priority'],
+  ['UT Austin',30.29,-97.74,'TX',1,'priority'],['Texas A&M',30.61,-96.34,'TX',0,'priority'],
+  ['UT San Antonio',29.58,-98.62,'TX',1,'priority'],
+  ['CU Boulder',40.01,-105.27,'CO',1,'soft'],['U of Florida',29.65,-82.34,'FL',1,'soft'],
+  ['Florida Int\u2019l',25.76,-80.37,'FL',1,'soft'],['U of Minnesota',44.97,-93.24,'MN',1,'soft'],
+  ['UNH Durham',43.14,-70.93,'NH',0,'soft'],['Ohio State',40.00,-83.02,'OH',1,'soft'],
+  ['Virginia Tech',37.23,-80.42,'VA',0,'soft'],['UVA',38.03,-78.51,'VA',1,'soft'],
+  ['Iowa State',42.03,-93.65,'IA',0,'soft'],['U of New Mexico',35.08,-106.62,'NM',0,'soft'],
+  ['UCLA',34.07,-118.44,'CA',1,'nice'],['UC Berkeley',37.87,-122.26,'CA',1,'nice'],
+  ['Hunter College',40.77,-73.96,'NY',1,'nice'],['U of Illinois',40.10,-88.23,'IL',1,'nice'],
+  ['U of Washington',47.66,-122.31,'WA',1,'nice'],['Portland State',45.51,-122.68,'OR',0,'nice'],
+  ['Rutgers',40.50,-74.45,'NJ',1,'nice'],['U of Kansas',38.95,-95.25,'KS',0,'nice']
+];
+CAMPUS.forEach(c=>{c[5]=TMAP[c[5]]||c[5]});
+const EVENTS = {
+  AZ:[['SEP 12','Tempe voter reg drive','Arizona State · Hayden Lawn · 40 shifts'],['SEP 26','Chapter leadership retreat','Phoenix · 55 RSVPs'],['OCT 05','Deadline push canvass','Maricopa County · with Chispa AZ']],
+  GA:[['SEP 09','Athens campus takeover','U of Georgia · Tate Plaza'],['SEP 20','Senate debate watch party','Atlanta · 120 RSVPs'],['OCT 06','Registration deadline blitz','Statewide · 9 sites']],
+  MI:[['SEP 15','Ann Arbor kickoff','U of Michigan · Diag · 60 shifts'],['SEP 28','Detroit door knock','with Detroit Action'],['OCT 12','Early vote march','Lansing · 200 RSVPs']],
+  NC:[['SEP 11','Chapel Hill reg drive','UNC · Pit · 35 shifts'],['SEP 24','HBCU organizing summit','Durham · 85 RSVPs']],
+  NV:[['SEP 17','UNLV welcome week table','Las Vegas · 5 days'],['OCT 03','Reno youth town hall','U of Nevada Reno']],
+  PA:[['SEP 10','Philly reg week','Temple · 6 sites'],['SEP 23','State College canvass','Penn State · 45 shifts'],['OCT 20','Early vote party','Pittsburgh']],
+  WI:[['SEP 16','Madison library mall drive','UW–Madison'],['OCT 08','Milwaukee GOTV training','with BLOC · 70 RSVPs']],
+  TX:[['SEP 08','Austin reg blitz','UT Austin · West Mall'],['SEP 19','RGV youth summit','McAllen · with MOVE Texas'],['OCT 07','San Antonio deadline push','UTSA']],
+  FL:[['SEP 18','Gainesville reg drive','U of Florida · Turlington'],['OCT 01','Miami youth forum','FIU · 90 RSVPs']],
+  OH:[['SEP 22','Columbus oval tabling','Ohio State'],['OCT 06','Cleveland deadline canvass','']],
+  MN:[['SEP 25','Twin Cities reg drive','U of Minnesota · Coffman']],
+  CO:[['SEP 30','Boulder ballot party','CU Boulder · 50 RSVPs']],
+  VA:[['SEP 13','Charlottesville tabling','UVA']],
+  NH:[['SEP 29','Durham reg push','UNH']],
+  CA:[['SEP 14','Westwood reg drive','UCLA · Bruin Plaza'],['OCT 10','Bay Area chapter summit','UC Berkeley']],
+  NY:[['SEP 21','CUNY reg week','Hunter College']],
+  IL:[['OCT 02','Chicago youth assembly','with Chicago Votes']]
+};
+
+// program types
+const PT={
+  hip:{label:'Hard In-Person',   color:'#ff7a3d', note:'direct voter contact, single site'},
+  hd: {label:'Hard Distributed', color:'#f4d03f', note:'direct voter contact, many sites or remote'},
+  sip:{label:'Soft In-Person',   color:'#3fd2c7', note:'community & education, single site'},
+  sd: {label:'Soft Distributed', color:'#8b7bd8', note:'community & education, many sites or remote'}
+};
+const ETYPE={
+  'Tempe voter reg drive':'hip','Chapter leadership retreat':'sip','Deadline push canvass':'hd',
+  'Athens campus takeover':'sip','Senate debate watch party':'sip','Registration deadline blitz':'hd',
+  'Ann Arbor kickoff':'sip','Detroit door knock':'hip','Early vote march':'sip',
+  'Chapel Hill reg drive':'hip','HBCU organizing summit':'sip',
+  'UNLV welcome week table':'hip','Reno youth town hall':'sip',
+  'Philly reg week':'hd','State College canvass':'hip','Early vote party':'sip',
+  'Madison library mall drive':'hip','Milwaukee GOTV training':'sip',
+  'Austin reg blitz':'hip','RGV youth summit':'sip','San Antonio deadline push':'hd',
+  'Gainesville reg drive':'hip','Miami youth forum':'sip',
+  'Columbus oval tabling':'hip','Cleveland deadline canvass':'hd',
+  'Twin Cities reg drive':'hip','Boulder ballot party':'sip','Charlottesville tabling':'hip',
+  'Durham reg push':'hip','Westwood reg drive':'hip','Bay Area chapter summit':'sip',
+  'CUNY reg week':'hd','Chicago youth assembly':'sip'
+};
+const EXTRA={
+  AZ:[['OCT 12','Statewide pledge text bank','25 volunteers · relational','hd']],
+  GA:[['SEP 15','Peer-to-peer pledge push','Chapter-led · statewide','sd']],
+  MI:[['OCT 05','Issue education week','All chapters · distributed','sd']],
+  NC:[['OCT 09','Deadline text bank','Statewide','hd']],
+  TX:[['OCT 15','Ballot explainer series','Distributed · 6 campuses','sd']],
+  PA:[['OCT 01','Relational reg asks','Chapter-led · statewide','hd']],
+  NV:[['OCT 10','Chapter social week','Distributed','sd']],
+  FL:[['OCT 08','Vote pledge text bank','Statewide','hd']],
+  WI:[['OCT 15','Early vote explainer push','Distributed','sd']],
+  CA:[['OCT 05','Statewide pledge drive','Distributed · 8 campuses','sd']],
+  MN:[['OCT 07','Campus ballot guide drop','Distributed','sd']],
+  OH:[['SEP 30','Relational pledge week','Chapter-led','sd']]
+};
+Object.values(EVENTS).forEach(l=>l.forEach(e=>{if(!e[3])e[3]=ETYPE[e[1]]||'sip'}));
+Object.keys(EXTRA).forEach(k=>{EVENTS[k]=(EVENTS[k]||[]).concat(EXTRA[k])});
+const MO={SEP:8,OCT:9};
+function allEvents(){
+  const out=[];
+  Object.keys(EVENTS).forEach(st=>EVENTS[st].forEach(e=>{
+    const p=e[0].split(' ');
+    out.push({st:st,m:MO[p[0]],d:+p[1],title:e[1],meta:e[2],type:e[3]});
+  }));
+  return out.sort((a,b)=>a.m-b.m||a.d-b.d);
+}
+
+// deterministic plausible numbers
+function h(str){let x=2166136261;for(const c of str)x=(x^c.charCodeAt(0))*16777619>>>0;return x>>>0}
+const TIER_SCALE={priority:1,soft:.55,nice:.3};
+Object.keys(S).forEach(k=>{
+  const [oldTier,off,chap] = S[k];
+  const r=h(k)/4294967295, r2=h(k+'p')/4294967295, r3=h(k+'e')/4294967295;
+  const base=(chap==='established'?9000:chap==='building'?2600:700);
+  const reg=Math.round((base+r*base*1.9)*TIER_SCALE[oldTier]/100)*100;
+  const goal=Math.round(reg*(1.25+r2*.7)/500)*500;
+  const pledge=Math.round(reg*(.42+r3*.5)/50)*50;
+  const pgoal=Math.round(pledge*(1.2+r*.6)/250)*250;
+  const types=(TARGETS[k]||['dev']).slice().sort((a,b)=>TORDER.indexOf(a)-TORDER.indexOf(b));
+  S[k]={types,tier:types[0],chapter:chap,districts:S[k][3],partners:S[k][4],
+        reg,goal,pledge,pgoal,vol:Math.round(30+r2*260),
+        chapters:chap==='none'?0:1+Math.round(r*(types.includes('hard')?7:3))};
+});
+
+/* ---------------- filters ---------------- */
+const F = {chapter:true,hard:true,soft:true,dev:true};
+const fEl = document.getElementById('filters');
+fEl.innerHTML = `
+  <div class="fgroup"><h3>Target type</h3>
+    ${TORDER.map(k=>`<label class="chk"><input type="checkbox" data-f="${k}" checked><span class="swatch" style="background:${TIER[k].color}"></span>${TIER[k].label}</label>`).join('')}
+  </div>
+  <div class="fdiv"></div>
+  <div class="fgroup"><h3>Chapter status</h3>
+    <label class="chk"><input type="checkbox" data-f="chapter" checked><span class="swatch" style="background:var(--chapter)"></span>Existing chapter</label>
+  </div>
+  <div class="linkrow"><button id="selAll">Select all</button><button id="clrAll">Clear all</button></div>
+  <div class="fdiv"></div>
+  <div class="fnote">States carrying more than one checked target show alternating stripes. Ring marks an existing chapter.</div>`;
+fEl.addEventListener('change',e=>{
+  if(!e.target.dataset.f)return; F[e.target.dataset.f]=e.target.checked;
+  if(typeof view!=='undefined'&&view==='cal') renderCal();
+  else if(typeof view!=='undefined'&&view==='facts') renderFacts(); else draw();
+});
+document.getElementById('selAll').onclick=()=>setAll(true);
+document.getElementById('clrAll').onclick=()=>setAll(false);
+function setAll(v){fEl.querySelectorAll('input').forEach(i=>{i.checked=v;F[i.dataset.f]=v});
+  if(typeof view!=='undefined'&&view==='cal') renderCal();
+  else if(typeof view!=='undefined'&&view==='facts') renderFacts(); else draw()}
+
+/* ---------------- map ---------------- */
+let level='states', sel=null, states=[], path, proj;
+let mode='national', cdCache={}, cds=[], loading=false;
+const svg=d3.select('#map'), tip=document.getElementById('tip');
+const gStates=svg.append('g'), gCds=svg.append('g'), gLabels=svg.append('g'),
+      gDots=svg.append('g'), gCampus=svg.append('g');
+const overlay=document.getElementById('overlay');
+
+document.getElementById('levels').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  level=b.dataset.level;
+  [...e.currentTarget.children].forEach(c=>c.setAttribute('aria-pressed',c===b));
+  document.querySelector('.hint').textContent = level==='campuses'
+    ? 'Dots are campus programs · click a state for detail' : 'Click a state for detail';
+  if(mode==='state') closePanel(); else draw();
+});
+
+const ABBR={"01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT","10":"DE","11":"DC","12":"FL","13":"GA","15":"HI","16":"ID","17":"IL","18":"IN","19":"IA","20":"KS","21":"KY","22":"LA","23":"ME","24":"MD","25":"MA","26":"MI","27":"MN","28":"MS","29":"MO","30":"MT","31":"NE","32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY","37":"NC","38":"ND","39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV","55":"WI","56":"WY"};
+const SMALL=new Set(['RI','DE','DC','CT','NJ','MD','MA','NH','VT']);
+
+d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json').then(us=>{
+  states=topojson.feature(us,us.objects.states).features
+    .filter(f=>ABBR[f.id]).map(f=>(f.abbr=ABBR[f.id],f));
+  resize();
+  new ResizeObserver(()=>resize()).observe(document.querySelector('.mapwrap'));
+  document.getElementById('main').addEventListener('transitionend',e=>{
+    if(e.propertyName==='grid-template-columns') resize();
+  });
+});
+function resize(){
+  const el=document.querySelector('.mapwrap');
+  const w=el.clientWidth, hh=el.clientHeight;
+  if(!w||!hh||!states.length)return;
+  svg.attr('viewBox',`0 0 ${w} ${hh}`);
+  if(mode==='state'&&sel){
+    const sf=states.find(f=>f.abbr===sel);
+    const fit={type:'FeatureCollection',features:cds.length?cds:[sf]};
+    proj=d3.geoConicConformal().parallels([33,45]).rotate([96,0])
+      .fitExtent([[34,92],[w-34,hh-34]],fit);
+  } else {
+    proj=d3.geoAlbersUsa().fitExtent([[34,34],[w-34,hh-92]],{type:'FeatureCollection',features:states});
+  }
+  path=d3.geoPath(proj);
+  render();
+}
+
+function actives(a){
+  const d=S[a]; if(!d) return [];
+  return d.types.filter(t=>F[t]);
+}
+function visible(a){ return actives(a).length>0 }
+const defs=svg.append('defs');
+const madePatterns={};
+function stripeId(keys){
+  const id='p-'+keys.join('-');
+  if(madePatterns[id]) return id;
+  madePatterns[id]=1;
+  const u=13, w=u*keys.length;
+  const p=defs.append('pattern').attr('id',id).attr('width',w).attr('height',w)
+    .attr('patternUnits','userSpaceOnUse').attr('patternTransform','rotate(-45)');
+  p.append('rect').attr('width',w).attr('height',w).attr('fill',TIER[keys[0]].color);
+  keys.slice(1).forEach((k,i)=>{
+    p.append('rect').attr('x',(i+1)*u+3.7).attr('y',-1).attr('width',5.6).attr('height',w+2)
+      .attr('fill',TIER[k].color).attr('rx',1.2);
+  });
+  return id;
+}
+function fillFor(a){
+  const t=actives(a);
+  if(!t.length) return C.land;
+  if(t.length===1) return TIER[t[0]].color;
+  return 'url(#'+stripeId(t)+')';
+}
+function render(){
+  if(!states.length)return;
+  if(mode==='state'){renderState();return}
+  gCds.selectAll('*').remove();
+  overlay.innerHTML='';
+  document.querySelector('.stats').style.display='';
+  document.querySelector('.hint').style.display='';
+  gStates.selectAll('path').data(states,d=>d.abbr).join('path')
+    .attr('class',d=>'state'+(sel===d.abbr?' sel':''))
+    .attr('d',path)
+    .attr('fill',d=>fillFor(d.abbr))
+    .attr('fill-opacity',d=>visible(d.abbr)?(level==='campuses'?.5:.86):1)
+    .on('mousemove',(e,d)=>showTip(e,d.abbr))
+    .on('mouseleave',()=>tip.style.opacity=0)
+    .on('click',(e,d)=>select(d.abbr));
+
+  gLabels.selectAll('text').data(states.filter(d=>!SMALL.has(d.abbr)),d=>d.abbr).join('text')
+    .attr('class','slabel')
+    .attr('transform',d=>{const c=path.centroid(d);return `translate(${c[0]},${c[1]+3})`})
+    .attr('fill-opacity',d=>visible(d.abbr)?.62:.22)
+    .text(d=>d.abbr);
+
+  // chapter rings
+  const chap = F.chapter ? states.filter(d=>visible(d.abbr)&&S[d.abbr].chapter==='established') : [];
+  gDots.selectAll('circle').data(chap,d=>d.abbr).join('circle')
+    .attr('class','chapdot')
+    .attr('cx',d=>path.centroid(d)[0]).attr('cy',d=>path.centroid(d)[1]-13)
+    .attr('r',3.4).attr('fill','none').attr('stroke',C.chapter).attr('stroke-width',1.6);
+
+  const cps = level==='campuses' ? CAMPUS.filter(c=>visible(c[3])&&proj([c[2],c[1]])) : [];
+  const g=gCampus.selectAll('g').data(cps,c=>c[0]).join('g').attr('class','campus')
+    .attr('transform',c=>{const p=proj([c[2],c[1]]);return `translate(${p[0]},${p[1]})`})
+    .on('mousemove',(e,c)=>{tip.textContent=c[0]+(c[4]?' · chapter':' · no chapter');posTip(e)})
+    .on('mouseleave',()=>tip.style.opacity=0)
+    .on('click',(e,c)=>select(c[3]));
+  g.selectAll('*').remove();
+  g.append('circle').attr('r',5.5).attr('fill',c=>TIER[c[5]].color)
+    .attr('stroke',C.ink).attr('stroke-width',1.4);
+  g.filter(c=>c[4]).append('circle').attr('r',2).attr('fill',C.ink);
+
+  gLabels.style('opacity',level==='campuses'?.35:1);
+  if(level==='districts') drawDistricts(); else gCampus.selectAll('.dchip').remove();
+  stats();
+}
+function drawDistricts(){
+  const data=states.filter(d=>visible(d.abbr)&&S[d.abbr].districts.length);
+  const g=gCampus.selectAll('g.dchip').data(data,d=>d.abbr).join(
+    en=>en.append('g').attr('class','dchip'),u=>u,ex=>ex.remove());
+  g.attr('transform',d=>{const c=path.centroid(d);return `translate(${c[0]},${c[1]+14})`});
+  g.selectAll('*').remove();
+  g.append('rect').attr('x',-11).attr('y',-8).attr('width',22).attr('height',14)
+    .attr('fill',C.ink).attr('stroke','rgba(255,255,255,.35)');
+  g.append('text').attr('text-anchor','middle').attr('y',2.5)
+    .attr('font-family','IBM Plex Mono').attr('font-size',9.5).attr('fill','#fff')
+    .attr('font-weight',600).text(d=>S[d.abbr].districts.length+'D');
+  gCampus.selectAll('g:not(.dchip)').remove();
+}
+function renderState(){
+  const a=sel, d=S[a], sf=states.find(f=>f.abbr===a);
+  const at=d?actives(a):[]; const tier=at.length?TIER[at[0]].color:(d?TIER[d.tier].color:'#4a5566');
+  const targ=new Set((d?d.districts:[]).map(x=>x.split('-')[1]));
+  gLabels.selectAll('*').remove(); gDots.selectAll('*').remove();
+  document.querySelector('.stats').style.display='none';
+  document.querySelector('.hint').style.display='none';
+  gStates.selectAll('path').data(states,f=>f.abbr).join('path')
+    .attr('class','state').attr('d',path)
+    .attr('fill',f=>f.abbr===a?'#151b25':C.land)
+    .attr('fill-opacity',f=>f.abbr===a?1:.5)
+    .attr('pointer-events','none').attr('stroke','#0d1016');
+  gCds.selectAll('path').data(cds,f=>f.district).join('path')
+    .attr('class','cd').attr('d',path)
+    .attr('fill',f=>targ.has(f.district)?tier:'#252d3b')
+    .attr('fill-opacity',f=>targ.has(f.district)?.92:.85)
+    .on('mousemove',(e,f)=>{tip.textContent=a+'-'+f.district+(targ.has(f.district)?' · target district':' · not targeted');posTip(e)})
+    .on('mouseleave',()=>tip.style.opacity=0);
+  gCds.selectAll('text').remove();
+  if(cds.length&&cds.length<=24){
+    gCds.selectAll('text').data(cds,f=>f.district).join('text')
+      .attr('class','cdlabel')
+      .attr('transform',f=>{const c=path.centroid(f);return 'translate('+c[0]+','+(c[1]+4)+')'})
+      .text(f=>f.district.replace(/^0/,''));
+  }
+  const cps=CAMPUS.filter(c=>c[3]===a);
+  const cg=gCampus.selectAll('g').data(cps,c=>c[0]).join('g').attr('class','campus')
+    .attr('transform',c=>{const p=proj([c[2],c[1]]);return p?'translate('+p[0]+','+p[1]+')':'translate(-99,-99)'})
+    .on('mousemove',(e,c)=>{tip.textContent=c[0]+(c[4]?' · chapter':' · prospect');posTip(e)})
+    .on('mouseleave',()=>tip.style.opacity=0);
+  cg.selectAll('*').remove();
+  cg.append('circle').attr('r',5).attr('fill',C.chapter).attr('fill-opacity',c=>c[4]?1:.2)
+    .attr('stroke',C.chapter).attr('stroke-width',1.4);
+  cg.append('text').attr('x',9).attr('y',3.5).attr('font-size',10.5)
+    .attr('font-family','IBM Plex Sans').attr('fill','rgba(255,255,255,.82)')
+    .attr('paint-order','stroke').attr('stroke','rgba(13,16,22,.8)').attr('stroke-width',3)
+    .text(c=>c[0]);
+  const sub = cds.length ? cds.length+' districts · '+targ.size+' targeted · 113th Cong. lines' : 'congressional map';
+  overlay.innerHTML='<div class="statehdr"><div><div class="nm">'+NAME[a]+'</div><div class="sb">'+sub+'</div></div>'
+    +'<button onclick="closePanel()">&larr; National map</button></div>'
+    +'<div class="cdkey"><div><i style="background:'+tier+'"></i>Target district</div>'
+    +'<div><i style="background:#252d3b"></i>Other district</div>'
+    +'<div><i style="background:'+C.chapter+';border-radius:50%"></i>Campus program</div></div>'
+    +(loading?'<div class="loading">Loading district boundaries…</div>':'')
+    +((!loading&&!cds.length)?'<div class="loading">District boundaries unavailable</div>':'');
+}
+const CDBASE='https://cdn.jsdelivr.net/gh/benbalter/congressional-districts@gh-pages/';
+async function loadCDs(a){
+  if(cdCache[a])return cdCache[a];
+  const get=n=>d3.json(CDBASE+a+'/'+n+'.geojson').then(g=>({n:n,g:g})).catch(()=>null);
+  let out=[], i=1;
+  const at=await get('00'); if(at) out.push(at);
+  while(i<=55){
+    const b=[]; for(let k=0;k<8&&i<=55;k++,i++) b.push(get(String(i).padStart(2,'0')));
+    const res=(await Promise.all(b)).filter(Boolean);
+    out=out.concat(res);
+    if(!res.length) break;
+  }
+  const feats=[];
+  out.forEach(o=>{
+    const g=o.g;
+    const fs=(g&&g.type==='FeatureCollection')?g.features:(g?[g]:[]);
+    fs.forEach(f=>{const c=Object.assign({},f); c.district=o.n; feats.push(c)});
+  });
+  cdCache[a]=feats; return feats;
+}
+function showTip(e,a){
+  const d=S[a];
+  tip.textContent = d && visible(a)
+    ? `${a} · ${actives(a).map(k=>TIER[k].label).join(' + ')} · ${d.reg.toLocaleString()} reg`
+    : `${a} · not targeted`;
+  posTip(e);
+}
+function posTip(e){
+  const r=document.querySelector('.mapwrap').getBoundingClientRect();
+  tip.style.left=(e.clientX-r.left+12)+'px'; tip.style.top=(e.clientY-r.top-8)+'px';
+  tip.style.opacity=1;
+}
+function stats(){
+  const act=Object.keys(S).filter(visible);
+  const sum=k=>act.reduce((n,a)=>n+S[a][k],0);
+  const ev=act.reduce((n,a)=>n+((EVENTS[a]||[]).length),0);
+  document.getElementById('stats').innerHTML=[
+    ['Target states',act.length],['Voters registered',sum('reg').toLocaleString()],
+    ['Pledges to vote',sum('pledge').toLocaleString()],
+    ['Chapters',act.filter(a=>S[a].chapter==='established').length],
+    ['Events scheduled',ev]
+  ].map(([k,v])=>`<div><div class="k">${k}</div><div class="v mono">${v}</div></div>`).join('');
+}
+function draw(){render()}
+
+/* ---------------- panel ---------------- */
+const NAME={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'};
+const CHAP={established:['Established chapter','var(--chapter)'],building:['In development','#7f8ea3'],none:['No chapter yet','#4a5566']};
+const panel=document.getElementById('panel'), main=document.getElementById('main');
+
+async function select(a){
+  sel=a; mode='state'; cds=cdCache[a]||[]; loading=!cdCache[a];
+  main.classList.add('open'); resize(); paint(a);
+  if(loading){
+    const got=await loadCDs(a);
+    if(sel===a&&mode==='state'){cds=got; loading=false; resize()}
+  }
+}
+function paint(a){
+  const d=S[a];
+  if(!d){
+    panel.innerHTML=`<div class="ptop"><div class="row"><div><h2>${NAME[a]}</h2>
+      <div class="abbr">${a} · not on the target board</div></div>
+      <button class="close" onclick="closePanel()">×</button></div></div>
+      <div class="psec"><p class="empty">No coordinated program this cycle. Add it to the board to start tracking.</p></div>
+      <div class="pfoot"><button>Add to target board</button></div>`;
+    return;
+  }
+  const t=TIER[d.tier], ch=CHAP[d.chapter];
+  const pct=(x,y)=>Math.min(100,Math.round(x/y*100));
+  const ev=EVENTS[a]||[];
+  panel.innerHTML=`
+  <div class="ptop">
+    <div class="row"><div><h2>${NAME[a]}</h2>
+      <div class="abbr">${a} · ${d.districts.length} target district${d.districts.length===1?'':'s'} · ${CAMPUS.filter(c=>c[3]===a).length} campuses</div></div>
+      <button class="close" onclick="closePanel()">×</button></div>
+    <div class="tags">
+      ${d.types.map(k=>`<span class="tag on" style="background:${TIER[k].color}">${TIER[k].label}</span>`).join('')}
+    </div>
+  </div>
+  <div class="psec"><h4>Chapter presence</h4>
+    <div class="chapter"><span class="dot" style="background:${ch[1]}"></span>
+      <div><div class="t">${ch[0]}</div>
+      <div class="m">${d.chapter==='none'?'No chartered chapter · nearest program out of state':
+        d.chapters+' active chapter'+(d.chapters===1?'':'s')+' · '+d.vol+' trained volunteers'}</div></div></div>
+  </div>
+  <div class="psec"><h4>Program to date</h4>
+    <div class="metrics">
+      <div class="metric"><div class="k">Voters registered</div>
+        <div class="v mono">${d.reg.toLocaleString()}</div>
+        <div class="d">${pct(d.reg,d.goal)}% of ${d.goal.toLocaleString()} goal</div>
+        <div class="bar"><i style="width:${pct(d.reg,d.goal)}%;background:${t.color}"></i></div></div>
+      <div class="metric"><div class="k">Pledges to vote</div>
+        <div class="v mono">${d.pledge.toLocaleString()}</div>
+        <div class="d">${pct(d.pledge,d.pgoal)}% of ${d.pgoal.toLocaleString()} goal</div>
+        <div class="bar"><i style="width:${pct(d.pledge,d.pgoal)}%;background:var(--soft)"></i></div></div>
+    </div>
+  </div>
+  <div class="psec"><h4>Scheduled events · ${ev.length}</h4>
+    ${ev.length?ev.map(e=>`<div class="ev"><div class="date">${e[0]}</div>
+      <div><div class="t">${e[1]}</div>
+      <div class="m"><span style="display:inline-block;width:7px;height:7px;background:${PT[e[3]].color};margin-right:6px"></span>${PT[e[3]].label}${e[2]?' · '+e[2]:''}</div></div></div>`).join('')
+      :'<p class="empty">Nothing on the calendar. Assign an organizer to build a plan.</p>'}
+  </div>
+  <div class="psec"><h4>Target districts</h4>
+    ${d.districts.length?`<div class="chips">${d.districts.map(x=>`<span class="chip">${x}</span>`).join('')}</div>`
+      :'<p class="empty">No district-level targets.</p>'}
+  </div>
+  <div class="psec"><h4>Campus programs</h4>
+    ${CAMPUS.filter(c=>c[3]===a).length?`<div class="plist">${CAMPUS.filter(c=>c[3]===a).map(c=>
+      `<div class="p"><b>${c[0]}</b><span>${c[4]?'chapter':'prospect'}</span></div>`).join('')}</div>`
+      :'<p class="empty">No campus program yet.</p>'}
+  </div>
+  <div class="psec"><h4>Partner organizations</h4>
+    ${d.partners.length?`<div class="plist">${d.partners.map(p=>
+      `<div class="p"><b>${p}</b><span>coalition</span></div>`).join('')}</div>`
+      :'<p class="empty">No formal partners on record.</p>'}
+  </div>
+  <div class="pfoot"><button>Open state plan</button><button class="ghost">Export brief</button></div>`;
+  panel.scrollTop=0;
+}
+/* ---------------- quick facts ---------------- */
+const QF=[
+ {t:'Turnout math', sc:[['NATIONAL',[]]],
+  h:'Under-30 voters are 17% of the 2026 eligible electorate',
+  b:'That is roughly 41 million people, and about a third of them will be voting in their first federal election. The number only matters where turnout is organized, which is why the board is 39 states and not 50.',
+  u:'All programs'},
+ {t:'Deadlines', sc:[['AZ',['01','04','06']]],
+  h:'Arizona closes registration 29 days before Election Day',
+  b:'There is no same-day registration in Arizona. Every conversation before the deadline is worth more than three after it, so the Maricopa and Pima programs front-load registration and shift to pledge collection the week the books close.',
+  u:'Doors, campus tabling'},
+ {t:'Cost of living', sc:[['NV',['01','03','04']]],
+  h:'Clark County rent is up 34% since 2019',
+  b:'Median wages for workers under 30 rose 11% over the same period. When canvassers lead with housing costs in Las Vegas, conversation length roughly doubles compared with a generic voting ask.',
+  u:'Doors, texts'},
+ {t:'Student debt', sc:[['MI',['07','08']]],
+  h:'One in five adults under 35 in the Lansing and Flint corridors carries student debt',
+  b:'Both districts sit inside commuting distance of a public university. Debt is the most reliable door opener in MI-07 and MI-08, and it converts into a pledge more often than any other issue we track.',
+  u:'Doors, campus tabling'},
+ {t:'Reproductive rights', sc:[['GA',[]],['NC',['01','06']]],
+  h:'Reproductive care access is the top-cited issue for women under 30 in both states',
+  b:'In Georgia and North Carolina it outranks cost of living among that group by a wide margin. Lead with care access at HBCU and campus events, then close on the registration ask.',
+  u:'Campus tabling, events'},
+ {t:'Climate', sc:[['TX',['15','28','34']]],
+  h:'The Rio Grande Valley crossed 100 degrees on 41 days last year',
+  b:'Heat is not an abstraction in the RGV, it is a work and school issue. Organizers there frame climate as utility bills and outdoor labor conditions rather than emissions targets.',
+  u:'Doors, texts'},
+ {t:'Gun safety', sc:[['PA',['07','08','10','17']]],
+  h:'Gun violence is the most-cited safety concern among under-30 voters in the four target districts',
+  b:'It polls ahead of both crime generally and drug policy. The Philadelphia and Allentown programs pair it with the early-vote ask, which is where turnout is softest.',
+  u:'Doors, events'},
+ {t:'Turnout math', sc:[['WI',['01','03']]],
+  h:'Under-30 voters moved the last statewide margin by more than the margin itself',
+  b:'The statewide result came down to about 26,000 votes. Voters under 30 broke for the winner by 18 points. Madison and the Driftless districts are where that math is made.',
+  u:'Leadership, funders'},
+ {t:'Deadlines', sc:[['NC',['01','06','14']]],
+  h:'North Carolina same-day registration runs only during early voting',
+  b:'A voter who misses the mail deadline can still register in person at an early-voting site in their county. That single fact recovers a meaningful share of otherwise-lost conversations after the book closing.',
+  u:'Doors, texts, campus tabling'},
+ {t:'Cost of living', sc:[['GA',['01','02','13']],['FL',['13','27']]],
+  h:'Grocery and utility costs lead youth economic concerns in the Southeast programs',
+  b:'Neither state has a competitive-rent story like Nevada. The economic frame that lands is weekly cost, not housing, and it works better on texts than at the door.',
+  u:'Texts'},
+ {t:'Student debt', sc:[['OH',['01','09','13']]],
+  h:'Two-year and trade students outnumber four-year students across the Ohio target districts',
+  b:'Messaging built for four-year campuses does not reach them. Toledo and Youngstown programs run at community colleges and job sites instead, on a schedule that assumes people work.',
+  u:'Doors, campus tabling'},
+ {t:'Turnout math', sc:[['MN',['02']],['NH',['01']]],
+  h:'Both districts are decided inside a 5,000-vote band',
+  b:'Small absolute margins make distributed programs unusually efficient here. A relational push through existing chapter networks moves more votes per dollar than a new canvass.',
+  u:'Leadership, funders'},
+ {t:'Climate', sc:[['CO',['08']],['NM',[]]],
+  h:'Water is the climate frame that carries the Southwest',
+  b:'Drought and water rights poll well ahead of national climate language with young voters in both states. Keep the ask local: what the shortage does to jobs, food prices, and rural households.',
+  u:'Doors, events'},
+ {t:'Deadlines', sc:[['NATIONAL',[]]],
+  h:'Fifteen states let voters register on Election Day',
+  b:'Everywhere else the deadline is the program. Before writing a state plan, check which side of that line it falls on, because it determines whether September is registration or persuasion.',
+  u:'All programs'}
+];
+// every scope a blurb can carry, grouped by state
+const SCOPES={}; var HASNAT=false;
+QF.forEach(function(q){q.sc.forEach(function(x){
+  if(x[0]==='NATIONAL'){HASNAT=true;return}
+  SCOPES[x[0]]=SCOPES[x[0]]||{wide:false,cds:{}};
+  if(!x[1].length) SCOPES[x[0]].wide=true;
+  else x[1].forEach(function(cd){SCOPES[x[0]].cds[cd]=true});
+})});
+const SKEYS=Object.keys(SCOPES).sort();
+const DF={};
+if(HASNAT) DF.NATIONAL=true;
+SKEYS.forEach(function(st){
+  if(SCOPES[st].wide) DF[st]=true;
+  Object.keys(SCOPES[st].cds).sort().forEach(function(cd){DF[st+'-'+cd]=true});
+});
+const factFilters=document.getElementById('factfilters');
+const factwrap=document.getElementById('factwrap');
+factFilters.innerHTML='<div class="fgroup"><h3>Applies to</h3>'
+  +(HASNAT?'<label class="chk"><input type="checkbox" data-d="NATIONAL" checked>National</label><div class="fdiv" style="margin:12px 0"></div>':'')
+  +SKEYS.map(function(st){
+    return '<div class="dgrp"><span class="st">'+st+'</span>'
+      +(SCOPES[st].wide?'<label class="chk"><input type="checkbox" data-d="'+st+'" checked>Statewide</label>':'')
+      +Object.keys(SCOPES[st].cds).sort().map(function(cd){
+        return '<label class="chk"><input type="checkbox" data-d="'+st+'-'+cd+'" checked><span class="cd">'+st+'-'+cd+'</span></label>'
+      }).join('')+'</div>';
+  }).join('')
+  +'</div><div class="linkrow"><button id="dAll">Select all</button><button id="dNone">Clear all</button></div>'
+  +'<div class="fdiv"></div>'
+  +'<div class="fnote">A blurb shows if any district it covers is checked. Chips on each blurb open that state on the map.</div>';
+factFilters.addEventListener('change',function(e){
+  if(!e.target.dataset.d)return; DF[e.target.dataset.d]=e.target.checked; renderFacts();
+});
+function setDF(v){
+  factFilters.querySelectorAll('input[data-d]').forEach(function(i){i.checked=v;DF[i.dataset.d]=v});
+  renderFacts();
+}
+document.getElementById('dAll').onclick=function(){setDF(true)};
+document.getElementById('dNone').onclick=function(){setDF(false)};
+function scopeKeys(q){
+  var out=[];
+  q.sc.forEach(function(x){
+    if(x[0]==='NATIONAL'){out.push('NATIONAL');return}
+    if(!x[1].length){out.push(x[0]);return}
+    x[1].forEach(function(cd){out.push(x[0]+'-'+cd)});
+  });
+  return out;
+}
+function renderFacts(){
+  var items=QF.filter(function(q){
+    if(!scopeKeys(q).some(function(k){return DF[k]}))return false;
+    var sts=q.sc.filter(function(x){return x[0]!=='NATIONAL'});
+    if(!sts.length)return true;
+    return sts.some(function(x){return visible(x[0])});
+  });
+  var html='<div class="fhead"><h2>Quick facts</h2>'
+    +'<p>Messaging the organizing team can use as written. Each blurb is scoped to the states and districts it holds up in.</p></div>'
+    +'<div class="factnote">Sample copy. Figures are placeholders pending the research team sign-off.</div>'
+    +'<div class="feed">';
+  if(!items.length) html+='<div class="item"><p class="empty">No blurbs match the current filters.</p></div>';
+  items.forEach(function(q){
+    var chips=q.sc.map(function(x){
+      if(x[0]==='NATIONAL') return '<button class="nat">NATIONAL</button>';
+      if(!x[1].length) return '<button onclick="openFromCal(\''+x[0]+'\')">'+x[0]+' statewide</button>';
+      return x[1].map(function(cd){
+        return '<button onclick="openFromCal(\''+x[0]+'\')">'+x[0]+'-'+cd+'</button>'}).join('');
+    }).join('');
+    html+='<div class="item"><div class="scope">'+chips+'<span class="topic">'+q.t+'</span></div>'
+      +'<h3>'+q.h+'</h3><p>'+q.b+'</p>'
+      +'<div class="use">Use for: <b>'+q.u+'</b></div></div>';
+  });
+  factwrap.innerHTML=html+'</div>';
+}
+
+/* ---------------- calendar ---------------- */
+const PF={hip:true,hd:true,sip:true,sd:true};
+const calFilters=document.getElementById('calfilters');
+const calwrap=document.getElementById('calwrap');
+let view='map';
+
+calFilters.innerHTML='<div class="fgroup"><h3>Program type</h3>'
+  +Object.keys(PT).map(function(k){return '<label class="chk"><input type="checkbox" data-p="'+k
+    +'" checked><span class="swatch" style="background:'+PT[k].color+'"></span>'+PT[k].label+'</label>'}).join('')
+  +'</div><div class="fdiv"></div><div class="fgroup"><h3>Scheduled</h3><div id="tally"></div></div>'
+  +'<div class="fdiv"></div><div class="fnote">Hard programs make a direct voter contact ask. '
+  +'Distributed programs run across multiple sites or remotely. Click any event to open its state.</div>';
+calFilters.addEventListener('change',function(e){
+  if(!e.target.dataset.p)return; PF[e.target.dataset.p]=e.target.checked; renderCal();
+});
+
+document.getElementById('views').addEventListener('click',function(e){
+  const b=e.target.closest('button'); if(!b)return;
+  view=b.dataset.view;
+  Array.prototype.forEach.call(e.currentTarget.children,function(c){c.setAttribute('aria-pressed',c===b)});
+  const isMap=view==='map';
+  main.classList.toggle('calview',view==='cal');
+  main.classList.toggle('factview',view==='facts');
+  document.getElementById('filters').style.display=isMap?'':'none';
+  calFilters.style.display=view==='cal'?'':'none';
+  factFilters.style.display=view==='facts'?'':'none';
+  document.getElementById('levels').style.display=isMap?'':'none';
+  if(isMap){ requestAnimationFrame(resize); }
+  else { if(mode==='state') closePanel(); if(view==='cal') renderCal(); else renderFacts(); }
+});
+
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MNAME=['January','February','March','April','May','June','July','August',
+  'September','October','November','December'];
+function renderCal(){
+  const evs=allEvents().filter(function(e){return PF[e.type]&&visible(e.st)});
+  const byKey={};
+  evs.forEach(function(e){var k=e.m+'-'+e.d;(byKey[k]=byKey[k]||[]).push(e)});
+  var html='<div class="calhead"><h2>Program calendar</h2><span class="c">'+evs.length
+    +' scheduled events · '+new Set(evs.map(function(e){return e.st})).size+' states</span></div>';
+  [8,9].forEach(function(m){
+    const first=new Date(2026,m,1).getDay(), days=new Date(2026,m+1,0).getDate();
+    html+='<div class="month"><h3>'+MNAME[m]+' 2026</h3><div class="dow">'
+      +DOW.map(function(d){return '<span>'+d+'</span>'}).join('')+'</div><div class="grid">';
+    for(var i=0;i<first;i++) html+='<div class="cell out"></div>';
+    for(var d=1;d<=days;d++){
+      const list=byKey[m+'-'+d]||[];
+      html+='<div class="cell'+(list.length?' has':'')+'"><span class="n">'+d+'</span>'
+        +list.map(function(e){return '<button class="evc" style="border-left-color:'+PT[e.type].color
+          +'" onclick="openFromCal(\''+e.st+'\')" title="'+PT[e.type].label
+          +(e.meta?' · '+e.meta.replace(/"/g,''):'')+'"><span class="st">'+e.st
+          +'</span><span class="tt">'+e.title+'</span></button>'}).join('')
+        +'</div>';
+    }
+    const tail=(first+days)%7; if(tail) for(var t=tail;t<7;t++) html+='<div class="cell out"></div>';
+    html+='</div></div>';
+  });
+  html+='<div class="callegend">'+Object.keys(PT).map(function(k){
+    return '<div><i style="background:'+PT[k].color+'"></i>'+PT[k].label+' — '+PT[k].note+'</div>'}).join('')+'</div>';
+  calwrap.innerHTML=html;
+  const all=allEvents().filter(function(e){return visible(e.st)});
+  document.getElementById('tally').innerHTML=Object.keys(PT).map(function(k){
+    return '<div class="ftally"><span>'+PT[k].label+'</span><b>'
+      +all.filter(function(e){return e.type===k}).length+'</b></div>'}).join('');
+}
+function openFromCal(st){
+  document.querySelector('#views button[data-view="map"]').click();
+  select(st);
+}
+
+function closePanel(){sel=null;mode='national';cds=[];loading=false;
+  main.classList.remove('open');
+  gCampus.selectAll('*').remove(); gCds.selectAll('*').remove();
+  requestAnimationFrame(resize);}
+</script>
+</body>
+</html>

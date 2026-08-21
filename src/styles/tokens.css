@@ -1,0 +1,46 @@
+/* Design tokens. Taken from the approved Claude Design prototype — treat the values
+   here as the source of truth for the palette and change them in one place. */
+:root {
+  --ink: #0d1016;
+  --ink-2: #141922;
+  --ink-3: #1b2230;
+  --line: #2a3342;
+  --line-2: #38445a;
+
+  --fg: #eef2f7;
+  --fg-2: #9aa7bb;
+  --fg-3: #6b7789;
+
+  /* Target-type accents. Mirrored in src/data/tiers.ts, which the SVG layers read —
+     SVG presentation attributes cannot resolve var(), so the map needs literals. */
+  --prio: #ff7a3d;   /* Hard Target */
+  --soft: #3fd2c7;   /* Soft Target */
+  --nice: #8b7bd8;   /* Development Target */
+  --chapter: #f4d03f;
+
+  --land: #1a212c;
+}
+
+* { box-sizing: border-box }
+
+html, body { margin: 0; height: 100% }
+
+body {
+  background: var(--ink);
+  color: var(--fg);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#root { height: 100% }
+
+a { color: var(--soft); text-decoration: none }
+a:hover { color: var(--fg) }
+
+.mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums }
+
+::-webkit-scrollbar { width: 9px }
+::-webkit-scrollbar-track { background: var(--ink) }
+::-webkit-scrollbar-thumb { background: var(--line) }
