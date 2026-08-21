@@ -1,4 +1,11 @@
-import { rankTypes, type TargetType } from './tiers'
+import type { TargetType } from './tiers'
+import {
+  TARGET_STATES,
+  stateTargetTypes,
+  targetDistrictsIn,
+  targetsIn,
+  type Target,
+} from './targets'
 import {
   deriveMetrics,
   type ChapterStatus,
@@ -7,79 +14,83 @@ import {
 } from '../lib/metrics'
 
 /**
- * The target board: every state VOT runs a coordinated program in this cycle.
+ * Organizational facts about a state: whether there is a chapter, and who we work with.
  *
- * PLACEHOLDER DATA. The target mixes, chapter statuses, district lists and partner
- * orgs below were assigned during design and are not confirmed. Replace the values
- * here — the shape is the contract, nothing downstream reads anything else.
+ * This is deliberately NOT where targeting lives — target types and target districts are
+ * derived from `src/data/targets.ts`. Records are kept here for states that have since
+ * come off the board, so their chapter and partner history is not lost; a state only
+ * reappears on the map when a target is added back for it.
+ *
+ * PLACEHOLDER DATA: chapter statuses and partner lists were assigned during design and
+ * have not been confirmed.
  */
 export interface StateSource {
-  /** Every target classification the state carries; order here does not matter. */
-  types: TargetType[]
+  chapter: ChapterStatus
+  partners: string[]
   /**
-   * Legacy single-tier classification, kept only to scale the placeholder metrics
-   * (see `src/lib/metrics.ts`). Drop it once real figures land.
+   * Legacy single-tier classification, kept only to scale the placeholder metrics (see
+   * `src/lib/metrics.ts`) so that figures stay differentiated and stable. It encodes
+   * nothing real — delete it along with the generator once measured numbers land.
    */
   scaleTier: ScaleTier
-  chapter: ChapterStatus
-  /** Target congressional districts, written the way organizers write them. */
-  districts: string[]
-  partners: string[]
 }
 
 export const STATE_SOURCE: Record<string, StateSource> = {
-  AZ: { types: ['hard', 'dev'], scaleTier: 'priority', chapter: 'established', districts: ['AZ-01', 'AZ-04', 'AZ-06'], partners: ['Arizona Youth Vote', 'Chispa AZ'] },
-  GA: { types: ['hard', 'soft'], scaleTier: 'priority', chapter: 'established', districts: ['GA-01', 'GA-02', 'GA-13'], partners: ['New Georgia Project', 'Georgia Shift'] },
-  MI: { types: ['hard'], scaleTier: 'priority', chapter: 'established', districts: ['MI-07', 'MI-08', 'MI-10'], partners: ['MI Student Power', 'Detroit Action'] },
-  NC: { types: ['hard', 'dev'], scaleTier: 'priority', chapter: 'established', districts: ['NC-01', 'NC-06', 'NC-14'], partners: ['NC Black Alliance', 'Down Home NC'] },
-  NV: { types: ['hard', 'soft', 'dev'], scaleTier: 'priority', chapter: 'established', districts: ['NV-01', 'NV-03', 'NV-04'], partners: ['Silver State Voices'] },
-  PA: { types: ['hard'], scaleTier: 'priority', chapter: 'established', districts: ['PA-07', 'PA-08', 'PA-10', 'PA-17'], partners: ['PA Youth Vote', 'Make the Road PA'] },
-  WI: { types: ['hard', 'dev'], scaleTier: 'priority', chapter: 'established', districts: ['WI-01', 'WI-03'], partners: ['WI Youth Power', 'BLOC'] },
-  TX: { types: ['hard', 'soft', 'dev'], scaleTier: 'priority', chapter: 'established', districts: ['TX-15', 'TX-28', 'TX-34'], partners: ['MOVE Texas', 'Jolt Initiative'] },
+  AZ: { chapter: 'established', scaleTier: 'priority', partners: ['Arizona Youth Vote', 'Chispa AZ'] },
+  GA: { chapter: 'established', scaleTier: 'priority', partners: ['New Georgia Project', 'Georgia Shift'] },
+  MI: { chapter: 'established', scaleTier: 'priority', partners: ['MI Student Power', 'Detroit Action'] },
+  NC: { chapter: 'established', scaleTier: 'priority', partners: ['NC Black Alliance', 'Down Home NC'] },
+  NV: { chapter: 'established', scaleTier: 'priority', partners: ['Silver State Voices'] },
+  PA: { chapter: 'established', scaleTier: 'priority', partners: ['PA Youth Vote', 'Make the Road PA'] },
+  WI: { chapter: 'established', scaleTier: 'priority', partners: ['WI Youth Power', 'BLOC'] },
+  TX: { chapter: 'established', scaleTier: 'priority', partners: ['MOVE Texas', 'Jolt Initiative'] },
 
-  FL: { types: ['soft', 'dev'], scaleTier: 'soft', chapter: 'established', districts: ['FL-13', 'FL-27'], partners: ['Florida Rising', 'Dream Defenders'] },
-  OH: { types: ['soft'], scaleTier: 'soft', chapter: 'established', districts: ['OH-01', 'OH-09', 'OH-13'], partners: ['Ohio Student Assoc.'] },
-  VA: { types: ['soft'], scaleTier: 'soft', chapter: 'established', districts: ['VA-02', 'VA-07'], partners: ['New Virginia Majority'] },
-  MN: { types: ['soft', 'dev'], scaleTier: 'soft', chapter: 'established', districts: ['MN-02'], partners: ['MN Youth Collective'] },
-  CO: { types: ['soft'], scaleTier: 'soft', chapter: 'established', districts: ['CO-08'], partners: ['New Era Colorado'] },
-  NH: { types: ['soft', 'dev'], scaleTier: 'soft', chapter: 'building', districts: ['NH-01'], partners: ['NH Youth Movement'] },
-  NM: { types: ['soft', 'dev'], scaleTier: 'soft', chapter: 'building', districts: [], partners: ['NM Native Vote'] },
-  IA: { types: ['soft'], scaleTier: 'soft', chapter: 'building', districts: ['IA-01', 'IA-03'], partners: [] },
-  ME: { types: ['soft'], scaleTier: 'soft', chapter: 'building', districts: ['ME-02'], partners: ['Maine Youth Action'] },
+  FL: { chapter: 'established', scaleTier: 'soft', partners: ['Florida Rising', 'Dream Defenders'] },
+  OH: { chapter: 'established', scaleTier: 'soft', partners: ['Ohio Student Assoc.'] },
+  VA: { chapter: 'established', scaleTier: 'soft', partners: ['New Virginia Majority'] },
+  MN: { chapter: 'established', scaleTier: 'soft', partners: ['MN Youth Collective'] },
+  CO: { chapter: 'established', scaleTier: 'soft', partners: ['New Era Colorado'] },
+  NH: { chapter: 'building', scaleTier: 'soft', partners: ['NH Youth Movement'] },
+  NM: { chapter: 'building', scaleTier: 'soft', partners: ['NM Native Vote'] },
+  IA: { chapter: 'building', scaleTier: 'soft', partners: [] },
+  ME: { chapter: 'building', scaleTier: 'soft', partners: ['Maine Youth Action'] },
 
-  CA: { types: ['soft', 'dev'], scaleTier: 'nice', chapter: 'established', districts: ['CA-13', 'CA-22', 'CA-41', 'CA-45'], partners: ['CA Calls', 'Power CA Action'] },
-  NJ: { types: ['soft', 'dev'], scaleTier: 'nice', chapter: 'established', districts: ['NJ-07'], partners: ['NJ Youth Power'] },
-  NY: { types: ['dev'], scaleTier: 'nice', chapter: 'established', districts: ['NY-04', 'NY-17', 'NY-19'], partners: ['NY Youth Agenda'] },
-  IL: { types: ['dev'], scaleTier: 'nice', chapter: 'established', districts: ['IL-13', 'IL-17'], partners: ['Chicago Votes'] },
-  WA: { types: ['dev'], scaleTier: 'nice', chapter: 'established', districts: ['WA-03', 'WA-08'], partners: ['WA Youth Alliance'] },
-  MA: { types: ['dev'], scaleTier: 'nice', chapter: 'established', districts: [], partners: ['MassVOTE'] },
-  OR: { types: ['dev'], scaleTier: 'nice', chapter: 'established', districts: ['OR-05', 'OR-06'], partners: ['Next Up Action'] },
-  MD: { types: ['dev'], scaleTier: 'nice', chapter: 'established', districts: [], partners: [] },
-  MO: { types: ['dev'], scaleTier: 'nice', chapter: 'building', districts: ['MO-02'], partners: [] },
-  TN: { types: ['dev'], scaleTier: 'nice', chapter: 'building', districts: [], partners: ['The Equity Alliance'] },
-  UT: { types: ['dev'], scaleTier: 'nice', chapter: 'building', districts: ['UT-04'], partners: [] },
-  CT: { types: ['dev'], scaleTier: 'nice', chapter: 'building', districts: ['CT-05'], partners: [] },
-  KS: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['KS-03'], partners: [] },
-  IN: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['IN-01'], partners: [] },
-  MT: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['MT-01'], partners: [] },
-  AK: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['AK-00'], partners: [] },
-  SC: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: [], partners: [] },
-  LA: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['LA-06'], partners: [] },
-  KY: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: [], partners: [] },
-  NE: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['NE-02'], partners: [] },
-  OK: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: [], partners: [] },
-  AL: { types: ['dev'], scaleTier: 'nice', chapter: 'none', districts: ['AL-02'], partners: [] },
+  CA: { chapter: 'established', scaleTier: 'nice', partners: ['CA Calls', 'Power CA Action'] },
+  NJ: { chapter: 'established', scaleTier: 'nice', partners: ['NJ Youth Power'] },
+  NY: { chapter: 'established', scaleTier: 'nice', partners: ['NY Youth Agenda'] },
+  IL: { chapter: 'established', scaleTier: 'nice', partners: ['Chicago Votes'] },
+  WA: { chapter: 'established', scaleTier: 'nice', partners: ['WA Youth Alliance'] },
+  MA: { chapter: 'established', scaleTier: 'nice', partners: ['MassVOTE'] },
+  OR: { chapter: 'established', scaleTier: 'nice', partners: ['Next Up Action'] },
+  MD: { chapter: 'established', scaleTier: 'nice', partners: [] },
+  MO: { chapter: 'building', scaleTier: 'nice', partners: [] },
+  TN: { chapter: 'building', scaleTier: 'nice', partners: ['The Equity Alliance'] },
+  UT: { chapter: 'building', scaleTier: 'nice', partners: [] },
+  CT: { chapter: 'building', scaleTier: 'nice', partners: [] },
+  KS: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  IN: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  MT: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  AK: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  SC: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  LA: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  KY: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  NE: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  OK: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  AL: { chapter: 'none', scaleTier: 'nice', partners: [] },
 }
 
 export interface StateRecord extends DerivedMetrics {
   abbr: string
   name: string
-  /** Target types in ranked order (Soft > Hard > Development). */
+  /** Union of the state's targets' designations, ranked (Soft > Hard > Development). */
   types: TargetType[]
-  /** Dominant target type — the first of `types`. Drives the state's solid fill. */
+  /** Dominant designation — the first of `types`. Drives the state's solid fill. */
   tier: TargetType
-  chapter: ChapterStatus
+  /** Every target in the state: Senate, statewide and House. */
+  targets: Target[]
+  /** Target House districts as full ids, e.g. `['OH-01','OH-09','OH-13']`. */
   districts: string[]
+  chapter: ChapterStatus
   partners: string[]
 }
 
@@ -98,10 +109,16 @@ export const STATE_NAME: Record<string, string> = {
   WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
 }
 
-/** The target board, keyed by abbreviation, with placeholder metrics resolved. */
+/**
+ * The board: one record per state carrying at least one target, with placeholder
+ * metrics resolved. A state with no targets is absent, and the detail panel treats it
+ * as "not on the target board".
+ */
 export const STATES: Record<string, StateRecord> = Object.fromEntries(
-  Object.entries(STATE_SOURCE).map(([abbr, src]) => {
-    const types = rankTypes(src.types)
+  TARGET_STATES.map((abbr) => {
+    const source = STATE_SOURCE[abbr] ?? { chapter: 'none', partners: [], scaleTier: 'nice' }
+    const types = stateTargetTypes(abbr)
+
     return [
       abbr,
       {
@@ -109,10 +126,11 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
         name: STATE_NAME[abbr] ?? abbr,
         types,
         tier: types[0]!,
-        chapter: src.chapter,
-        districts: src.districts,
-        partners: src.partners,
-        ...deriveMetrics(abbr, src.scaleTier, src.chapter, types.includes('hard')),
+        targets: targetsIn(abbr),
+        districts: targetDistrictsIn(abbr),
+        chapter: source.chapter,
+        partners: source.partners,
+        ...deriveMetrics(abbr, source.scaleTier, source.chapter, types.includes('hard')),
       } satisfies StateRecord,
     ]
   }),
@@ -125,7 +143,7 @@ export const CHAPTER_STATUS: Record<ChapterStatus, { label: string; color: strin
   none: { label: 'No chapter yet', color: '#4a5566' },
 }
 
-/** `'AZ-01'` -> `'01'`. Districts are stored with their state prefix for readability. */
+/** `'OH-09'` -> `'09'`. Districts carry their state prefix for readability. */
 export function districtNumber(id: string): string {
   return id.split('-')[1] ?? id
 }

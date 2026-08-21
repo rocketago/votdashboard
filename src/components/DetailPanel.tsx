@@ -2,6 +2,7 @@ import { CHAPTER_STATUS, STATE_NAME, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
 import { campusesIn } from '../data/campuses'
 import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
+import { targetLabel } from '../data/targets'
 
 const pct = (value: number, goal: number) => Math.min(100, Math.round((value / goal) * 100))
 
@@ -54,8 +55,9 @@ export function DetailPanel({ abbr, onClose }: Props) {
           <div>
             <h2>{record.name}</h2>
             <div className="abbr">
-              {abbr} · {record.districts.length} target district
-              {record.districts.length === 1 ? '' : 's'} · {campuses.length} campuses
+              {abbr} · {record.targets.length} target race
+              {record.targets.length === 1 ? '' : 's'} · {campuses.length} campus
+              {campuses.length === 1 ? '' : 'es'}
             </div>
           </div>
           <button className="close" onClick={onClose}>
@@ -142,17 +144,24 @@ export function DetailPanel({ abbr, onClose }: Props) {
       </div>
 
       <div className="psec">
-        <h4>Target districts</h4>
-        {record.districts.length ? (
+        <h4>Targets · {record.targets.length}</h4>
+        {record.targets.length ? (
           <div className="chips">
-            {record.districts.map((d) => (
-              <span className="chip" key={d}>
-                {d}
+            {record.targets.map((target) => (
+              <span
+                className="chip"
+                key={target.id}
+                // Left edge carries the target's own dominant type, which can differ
+                // from the state's — a Hard-only race in a Soft + Hard state, say.
+                style={{ borderLeft: `3px solid ${TIER[target.types[0]!].color}` }}
+                title={target.types.map((t) => TIER[t].label).join(' + ')}
+              >
+                {targetLabel(target)}
               </span>
             ))}
           </div>
         ) : (
-          <p className="empty">No district-level targets.</p>
+          <p className="empty">No races targeted.</p>
         )}
       </div>
 

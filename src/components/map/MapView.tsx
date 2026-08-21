@@ -4,7 +4,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 
 import { COLORS, TIER, type TargetType } from '../../data/tiers'
 import { STATES, districtNumber } from '../../data/states'
-import { CAMPUSES, campusesIn } from '../../data/campuses'
+import { CAMPUSES, campusType, campusesIn } from '../../data/campuses'
 import { eventsIn } from '../../data/events'
 import {
   cachedDistricts,
@@ -353,7 +353,7 @@ function NationalLayers({
                 onMouseLeave={onTipOut}
                 onClick={() => onSelect(c.state)}
               >
-                <circle r={5.5} fill={TIER[c.type].color} stroke={COLORS.ink} strokeWidth={1.4} />
+                <circle r={5.5} fill={TIER[campusType(c)].color} stroke={COLORS.ink} strokeWidth={1.4} />
                 {c.hasChapter && <circle r={2} fill={COLORS.ink} />}
               </g>
             )
