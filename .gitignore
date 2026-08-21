@@ -5,3 +5,8 @@ dist-ssr
 .DS_Store
 .vite
 *.tsbuildinfo
+
+# Secrets — the Airtable token for scripts/sync-chapters.mjs lives here
+.env
+.env.*
+!.env.example
