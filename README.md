@@ -98,11 +98,20 @@ Nothing is fetched from a CDN at runtime; state outlines and district boundaries
 served from `public/geo/`. Swapping in new boundaries is a file drop plus one line in a
 manifest — no code change.
 
-**No district boundaries are installed yet.** Until they are, clicking a state zooms and
-shows campus programmes but reports "District boundaries unavailable". `npm run
-geo:districts` splits a national GeoJSON into the per-state files the app expects and
-writes the manifest. Full instructions, including where to get current Census files and
-how to convert them, are in [`public/geo/README.md`](public/geo/README.md).
+The installed map is the **120th Congress** — all 435 districts on the lines that will be
+in effect for the 2026 election. It is built from `geo-src/congress.shp`, which is
+committed alongside it:
+
+```sh
+npm run geo -- geo-src/congress.shp
+```
+
+That one command writes the per-state district files, the manifest, and the national
+state outlines. The state outlines are *dissolved from the districts* rather than taken
+from a separate atlas, so the two layers agree exactly — geometry from two sources shows
+as a halo along every shared border once you zoom into a state. Details, including the
+checks the script refuses to finish without, are in
+[`public/geo/README.md`](public/geo/README.md).
 
 The loader reads district numbers from any of the usual Census property names, so a raw
 export drops in without editing properties.
@@ -117,8 +126,9 @@ the tokens in `src/styles/tokens.css`. Change a target-type colour in **both**.
 ## Layout
 
 ```
+geo-src/             the district shapefile everything in public/geo/ is built from
 public/geo/          state + district geometry, and how to replace it
-scripts/             split-districts.mjs — national GeoJSON -> per-state files
+scripts/             build-geo.mjs — shapefile -> per-state districts + state outlines
 src/data/            all content: states, campuses, events, quick facts, palette
 src/lib/             geo loading, placeholder metric generation
 src/hooks/           filter state, element sizing
@@ -128,7 +138,6 @@ src/styles/          tokens.css (palette), app.css (layout, transcribed from the
 
 ## Known gaps
 
-- No district boundaries are installed (see above).
 - All figures and all messaging copy are placeholders pending sign-off.
 - The placeholder Quick Facts copy still references districts that are no longer on the
   board (`AZ-01`, `TX-28`, `NV-01`, `MI-08`, `GA-13`, `MN-02` and others). The feed and
