@@ -16,6 +16,26 @@ npm run preview  # serve the build
 `dist/` is plain static files — deploy it anywhere (Netlify, Pages, S3). There is no
 server and no API.
 
+## Deploying
+
+Pushing to `main` builds and publishes to GitHub Pages via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). This needs to be turned on
+once, in **Settings → Pages → Source → GitHub Actions**; until it is, the workflow runs
+and fails at the last step.
+
+Pages serves the site from `/<repo>/` rather than the domain root, which matters more here
+than it usually does: the map fetches its geometry at runtime, so a wrong base path breaks
+the boundaries and not just the styling. The workflow passes the repo name in as
+`BASE_PATH` and `vite.config.ts` prefixes everything with it, so a rename needs no edit.
+
+To deploy somewhere that *does* serve from a root — a custom domain, Netlify, S3 — build
+without `BASE_PATH` and the default `/` applies. To check a Pages-style build locally:
+
+```sh
+BASE_PATH=/votdashboard/ npm run build
+BASE_PATH=/votdashboard/ npm run preview   # http://localhost:4173/votdashboard/
+```
+
 ## The three tabs
 
 **Map.** The 24-state target board. States are filled by target type; a state carrying
