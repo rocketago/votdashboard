@@ -14,11 +14,17 @@ export interface ProgramTypeSpec {
   color: string
 }
 
+/**
+ * Programme colours, taken from the Hard and Soft target tiers so a Hard programme
+ * reads Hard here and on the map. In-person takes a neon of the same hue, distributed
+ * the tier colour itself — the pair has to be told apart at the 2px the calendar draws
+ * them, which a small shift in lightness would not survive.
+ */
 export const PROGRAM_TYPE: Record<ProgramType, ProgramTypeSpec> = {
-  hip: { label: 'Hard In-Person', color: '#ff7a3d' },
-  hd: { label: 'Hard Distributed', color: '#f4d03f' },
-  sip: { label: 'Soft In-Person', color: '#3fd2c7' },
-  sd: { label: 'Soft Distributed', color: '#8b7bd8' },
+  hip: { label: 'Hard In-Person', color: '#ff3f24' },
+  hd: { label: 'Hard Distributed', color: '#e2604f' },
+  sip: { label: 'Soft In-Person', color: '#1ce9d6' },
+  sd: { label: 'Soft Distributed', color: '#2c9c93' },
 }
 
 /** Filter order in the sidebar and the legend. */
