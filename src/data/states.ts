@@ -8,11 +8,12 @@ import {
 } from './targets'
 import { chaptersIn } from './chapters'
 import { reportFor } from './reports'
-import {
-  deriveMetrics,
-  type ChapterStatus,
-  type DerivedMetrics,
-} from '../lib/metrics'
+
+/**
+ * Whether a state has a chartered chapter. Derived from the Airtable roster, which
+ * records chapters that exist — so there is no in-development state between the two.
+ */
+export type ChapterStatus = 'established' | 'none'
 
 /**
  * Organizational facts about a state: whether there is a chapter, and who we work with.
@@ -74,7 +75,7 @@ export const STATE_SOURCE: Record<string, StateSource> = {
   AL: { partners: [] },
 }
 
-export interface StateRecord extends DerivedMetrics {
+export interface StateRecord {
   abbr: string
   name: string
   /** Union of the state's targets' designations, ranked (Soft > Hard > Development). */
@@ -141,7 +142,6 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
         chapters: chapters.length,
         ...reportFor(abbr),
         partners: source.partners,
-        ...deriveMetrics(abbr),
       } satisfies StateRecord,
     ]
   }),

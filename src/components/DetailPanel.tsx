@@ -134,7 +134,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
             <div className="m">
               {record.chapter === 'none'
                 ? 'No chartered chapter · nearest program out of state'
-                : `${record.chapters} active chapter${record.chapters === 1 ? '' : 's'} · ${record.vol} trained volunteers`}
+                : `${record.chapters} active chapter${record.chapters === 1 ? '' : 's'}`}
             </div>
           </div>
         </div>
