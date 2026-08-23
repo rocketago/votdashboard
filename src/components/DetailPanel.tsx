@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import { CHAPTER_STATUS, STATE_NAME, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
 import { chaptersIn, type ChapterSetting } from '../data/chapters'
@@ -20,6 +22,9 @@ const CHAPTER_LABEL: Record<ChapterSetting, string> = {
 }
 
 const CHAPTER_ORDER: ChapterSetting[] = ['state', 'community', 'college', 'high-school']
+
+/** Events shown before the list is collapsed behind a button. */
+const EVENT_PREVIEW = 5
 
 interface ProgramEntry {
   name: string
@@ -53,10 +58,21 @@ function programIn(abbr: string): ProgramEntry[] {
 interface Props {
   /** The state to describe, or null when nothing is selected. */
   abbr: string | null
+  /**
+   * Whether the panel is actually open. `abbr` lingers after closing so the panel has
+   * something to render while it slides shut, so it cannot answer this on its own.
+   */
+  open: boolean
   onClose: () => void
 }
 
-export function DetailPanel({ abbr, onClose }: Props) {
+export function DetailPanel({ abbr, open, onClose }: Props) {
+  // Collapses again whenever the panel moves to another state, or is closed and
+  // reopened. Opening a state should start at the short list, not wherever the last one
+  // was left.
+  const [expanded, setExpanded] = useState(false)
+  useEffect(() => setExpanded(false), [abbr, open])
+
   if (!abbr) return <aside className="panel" />
 
   const record = STATES[abbr]
@@ -89,6 +105,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
 
   const chapter = CHAPTER_STATUS[record.chapter]
   const events = eventsIn(abbr)
+  const shownEvents = expanded ? events : events.slice(0, EVENT_PREVIEW)
   const chapters = chaptersIn(abbr)
   const campuses = campusesIn(abbr)
   const program = programIn(abbr)
@@ -165,8 +182,8 @@ export function DetailPanel({ abbr, onClose }: Props) {
       <div className="psec">
         <h4>Scheduled events · {events.length}</h4>
         {events.length ? (
-          events.map((e) => (
-            <div className="ev" key={`${e.date}-${e.title}`}>
+          shownEvents.map((e) => (
+            <div className="ev" key={`${e.date}-${e.time}-${e.title}`}>
               <div className="date">{shortDate(e)}</div>
               <div>
                 <div className="t">{e.title}</div>
@@ -183,6 +200,11 @@ export function DetailPanel({ abbr, onClose }: Props) {
           ))
         ) : (
           <p className="empty">Nothing on the calendar. Assign an organizer to build a plan.</p>
+        )}
+        {events.length > EVENT_PREVIEW && (
+          <button className="more" onClick={() => setExpanded(!expanded)}>
+            {expanded ? 'Show fewer' : `Show all ${events.length}`}
+          </button>
         )}
       </div>
 

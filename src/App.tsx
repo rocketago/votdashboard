@@ -81,7 +81,14 @@ export function App() {
               onSelect={setSelected}
               onClose={closePanel}
             />
-            <DetailPanel abbr={selected ?? lastSelected.current} onClose={closePanel} />
+            {/* `abbr` falls back to the last selection so the panel keeps its content
+                while it slides shut; `open` is the honest state, and what the panel
+                resets itself on. */}
+            <DetailPanel
+              abbr={selected ?? lastSelected.current}
+              open={selected !== null}
+              onClose={closePanel}
+            />
           </>
         )}
 
