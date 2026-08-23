@@ -6,6 +6,8 @@
  * the real talking points; the feed renders whatever is here.
  */
 
+import { TARGET_STATES, targetDistrictsIn } from './targets'
+
 export const NATIONAL = 'NATIONAL'
 
 export interface FactScope {
@@ -25,7 +27,7 @@ export interface QuickFact {
   useFor: string
 }
 
-export const QUICK_FACTS: QuickFact[] = [
+const ALL_FACTS: QuickFact[] = [
   {
     topic: 'Turnout math',
     scopes: [{ state: NATIONAL, districts: [] }],
@@ -137,6 +139,45 @@ export const QUICK_FACTS: QuickFact[] = [
     useFor: 'All programs',
   },
 ]
+
+const ON_BOARD = new Set(TARGET_STATES)
+const targetDistricts = new Map(
+  TARGET_STATES.map((abbr) => [abbr, new Set(targetDistrictsIn(abbr).map((id) => id.slice(3)))]),
+)
+
+/**
+ * The same blurb, with any scope naming something off the target board removed.
+ *
+ * The copy still cites districts that have come off the board. Every chip is a link to a
+ * state, and the sidebar's filter tree is built from these scopes, so leaving them in
+ * would offer races we are not running. A blurb left with no scope at all is dropped
+ * rather than shown as applying to nothing.
+ */
+function scopedToBoard(fact: QuickFact): QuickFact | null {
+  const scopes: FactScope[] = []
+
+  for (const scope of fact.scopes) {
+    if (scope.state === NATIONAL) {
+      scopes.push(scope)
+      continue
+    }
+    if (!ON_BOARD.has(scope.state)) continue
+    if (!scope.districts.length) {
+      scopes.push(scope)
+      continue
+    }
+
+    const targeted = targetDistricts.get(scope.state)
+    const districts = scope.districts.filter((d) => targeted?.has(d))
+    if (districts.length) scopes.push({ ...scope, districts })
+  }
+
+  return scopes.length ? { ...fact, scopes } : null
+}
+
+export const QUICK_FACTS: QuickFact[] = ALL_FACTS.map(scopedToBoard).filter(
+  (f): f is QuickFact => f !== null,
+)
 
 /** Filter key for one scope: `'NATIONAL'`, `'GA'` (statewide), or `'AZ-01'`. */
 export function scopeKeys(fact: QuickFact): string[] {

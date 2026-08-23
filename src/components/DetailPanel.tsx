@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { CHAPTER_STATUS, STATE_NAME, STATES } from '../data/states'
+import { CHAPTER_STATUS, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
 import { chaptersIn, type ChapterSetting } from '../data/chapters'
 import { campusesIn } from '../data/campuses'
@@ -77,28 +77,9 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
 
   const record = STATES[abbr]
 
-  if (!record) {
-    return (
-      <aside className="panel">
-        <div className="ptop">
-          <div className="row">
-            <div>
-              <h2>{STATE_NAME[abbr] ?? abbr}</h2>
-              <div className="abbr">{abbr} · not on the target board</div>
-            </div>
-            <button className="close" onClick={onClose}>
-              ×
-            </button>
-          </div>
-        </div>
-        <div className="psec">
-          <p className="empty">
-            No coordinated program this cycle. Add it to the board to start tracking.
-          </p>
-        </div>
-      </aside>
-    )
-  }
+  // Nothing links to a state off the board any more — the map does not open one, and
+  // the feed's scopes are filtered to the board — so there is no panel for one.
+  if (!record) return <aside className="panel" />
 
   const chapter = CHAPTER_STATUS[record.chapter]
   const events = eventsIn(abbr)
