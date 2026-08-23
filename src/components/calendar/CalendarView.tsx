@@ -10,6 +10,9 @@ import {
   type ProgramType,
 } from '../../data/events'
 
+/** The Airtable form behind the Event Tracker the calendar is synced from. */
+const ADD_EVENT_FORM = 'https://airtable.com/appwnA2eTd4GfxZWE/pagcLZHL8gA5GPxON/form'
+
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAME = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -53,6 +56,12 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
         <span className="c">
           {shown.length} scheduled events · {stateCount} states · all times Eastern
         </span>
+
+        {/* The tracker itself. New events reach the calendar on the next `npm run sync`,
+            not the moment the form is submitted. */}
+        <a className="addev" href={ADD_EVENT_FORM} target="_blank" rel="noopener noreferrer">
+          Add new event
+        </a>
       </div>
 
       {shown.length === 0 && (
