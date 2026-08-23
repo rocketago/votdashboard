@@ -48,6 +48,11 @@ const SOURCE = {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     table: 'Event Tracker (Org-Wide)',
   },
+  targets: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    states: 'States',
+    districts: 'Districts',
+  },
 }
 
 /* ---------------- token ---------------- */
@@ -561,6 +566,94 @@ export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
   )
 }
 
+/* ---------------- the target board ---------------- */
+
+/** Airtable's `Target Type` choices. */
+const TARGET_TYPE = {
+  'Soft Target': 'soft',
+  'Hard Target': 'hard',
+  'Development Target': 'dev',
+}
+
+const TARGET_ORDER = ['soft', 'hard', 'dev']
+
+/**
+ * The board, from the Target Type column on States and Districts.
+ *
+ * A district row is a race in its own right. A state row is a statewide designation —
+ * Airtable has no column distinguishing a Senate race from a statewide programme, so
+ * both read as statewide here.
+ */
+async function syncTargets() {
+  const { base, states: statesTable, districts: districtsTable } = SOURCE.targets
+  const [stateRows, districtRows] = await Promise.all([
+    allRecords(base, statesTable),
+    allRecords(base, districtsTable),
+  ])
+
+  const byType = { soft: [], hard: [], dev: [] }
+  const problems = []
+
+  const assign = (id, raw) => {
+    for (const choice of raw) {
+      const type = TARGET_TYPE[String(choice).trim()]
+      if (!type) problems.push(`${id}: unrecognised Target Type "${choice}"`)
+      else if (!byType[type].includes(id)) byType[type].push(id)
+    }
+  }
+
+  for (const record of stateRows) {
+    const raw = record.fields['Target Type'] ?? []
+    if (!raw.length) continue
+
+    const name = String(record.fields['State'] ?? '').trim()
+    const abbr = NAME_TO_ABBR[name]
+    if (!abbr) problems.push(`unrecognised State "${name}"`)
+    else assign(abbr, raw)
+  }
+
+  for (const record of districtRows) {
+    const raw = record.fields['Target Type'] ?? []
+    if (!raw.length) continue
+
+    // Airtable writes Alaska's at-large seat AK-AL; the app uses AK-00 throughout.
+    const id = String(record.fields['District Name'] ?? '').trim().replace(/-AL$/, '-00')
+    if (!/^[A-Z]{2}-\d{2}$/.test(id)) problems.push(`district "${id}" is not a state and number`)
+    else assign(id, raw)
+  }
+
+  if (problems.length) fail('target', problems)
+
+  const total = new Set(Object.values(byType).flat())
+  if (!total.size) fail('target', ['no row in States or Districts carries a Target Type'])
+
+  const list = (name, ids) =>
+    `export const ${name}: string[] = [\n${[...ids]
+      .sort()
+      .map((id) => `  '${id}',`)
+      .join('\n')}\n]`
+
+  emit(
+    'targets.data.ts',
+    HEADER(
+      'the Target Type columns on the States and Districts tables',
+      ` * The board. A district row is a race; a state row is a statewide designation.
+ *
+ * Airtable has no column separating a Senate race from a statewide programme, so a
+ * targeted state reads as "OH statewide" rather than "OH-Sen". Adding that distinction
+ * means a column here, not a change in the app.`,
+    ) +
+      `
+${list('SOFT_TARGETS', byType.soft)}
+
+${list('HARD_TARGETS', byType.hard)}
+
+${list('DEVELOPMENT_TARGETS', byType.dev)}
+`,
+    `${total.size} targets (${TARGET_ORDER.map((t) => `${byType[t].length} ${t}`).join(', ')})`,
+  )
+}
+
 /* ---------------- events ---------------- */
 
 /** Airtable's `Event Type` choices, which match the app's programme types exactly. */
@@ -695,5 +788,6 @@ function fail(what, problems) {
 
 await syncChapters()
 await syncCampuses()
+await syncTargets()
 await syncReports()
 await syncEvents()

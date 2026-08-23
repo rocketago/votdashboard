@@ -3,40 +3,28 @@ import { rankTypes, type TargetType } from './tiers'
 /**
  * The 2026 target board.
  *
- * These three lists are the source of truth. Everything else about targeting — which
- * states appear on the map, what colour they take, which districts highlight when you
- * zoom in — is derived from them, so updating the board means editing only this file.
+ * The three lists come from the Target Type columns on the States and Districts tables
+ * in Airtable, synced into `targets.data.ts` by `npm run sync`. Everything else about
+ * targeting — which states appear on the map, what colour they take, which districts
+ * highlight when you zoom in — is derived from them.
  *
- * Entries are written the way the organizing team writes them:
+ * Entries read:
  *   `OH-09`   House district
- *   `NC-Sen`  Senate race
  *   `AK-00`   at-large House seat
- *   `NV`      statewide, with no specific race attached
+ *   `NV`      statewide
  *
- * Note that the Soft list is currently a strict subset of the Hard list: all 20 Soft
- * targets also appear under Hard. Soft and Hard are therefore treated as overlapping
- * designations a single race can hold at once, not as mutually exclusive tiers.
- *
- * Development is not limited to statewide entries: NC-Sen and MI-Sen carry it alongside
- * Soft and Hard, so a single race can hold all three.
+ * Soft and Hard are overlapping designations one race can hold at once, not mutually
+ * exclusive tiers, and a race can hold all three. Senate races have no representation
+ * of their own: Airtable records them as a designation on the state, so they read as
+ * statewide.
  */
 
-export const SOFT_TARGETS = [
-  'OH-09', 'NC-Sen', 'IA-01', 'ME-Sen', 'OH-01', 'IA-03', 'CO-08', 'NJ-07',
-  'NY-17', 'NM-02', 'NE-02', 'VA-02', 'OH-13', 'IA-02', 'CA-48', 'VA-01',
-  'TX-15', 'CO-03', 'MT-01', 'VA-05',
-]
-
-export const HARD_TARGETS = [
-  'OH-Sen', 'OH-09', 'NC-Sen', 'IA-01', 'MI-07', 'PA-07', 'PA-08', 'WI-03',
-  'ME-Sen', 'MI-Sen', 'PA-10', 'OH-01', 'IA-03', 'GA-Sen', 'TX-Sen', 'CO-08',
-  'NJ-07', 'NY-17', 'MI-04', 'MI-10', 'NC-11', 'NH-Sen', 'NE-02', 'CA-45',
-  'NM-02', 'VA-02', 'OH-13', 'IA-02', 'CA-13', 'FL-22', 'VA-01', 'CA-48',
-  'NH-01', 'AZ-02', 'TX-15', 'WI-01', 'AZ-06', 'CO-03', 'MT-01', 'WA-03',
-  'VA-05', 'PA-01', 'AK-00', 'IA-Sen', 'AK-Sen',
-]
-
-export const DEVELOPMENT_TARGETS = ['NC-Sen', 'MI-Sen', 'SC', 'VA', 'NV', 'NM']
+export {
+  SOFT_TARGETS,
+  HARD_TARGETS,
+  DEVELOPMENT_TARGETS,
+} from './targets.data'
+import { SOFT_TARGETS, HARD_TARGETS, DEVELOPMENT_TARGETS } from './targets.data'
 
 /** What kind of contest a target is. */
 export type TargetScope = 'senate' | 'house' | 'state'
