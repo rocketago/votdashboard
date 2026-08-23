@@ -130,11 +130,14 @@ function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
                   key={`${e.state}-${e.title}`}
                   className="evc"
                   style={{ borderLeftColor: PROGRAM_TYPE[e.type].color }}
-                  title={`${PROGRAM_TYPE[e.type].label}${e.meta ? ` · ${e.meta}` : ''}`}
+                  // The title is clamped to two lines, so the full text lives here.
+                  title={`${e.title} · ${PROGRAM_TYPE[e.type].label}${e.meta ? ` · ${e.meta}` : ''}`}
                   onClick={() => onOpenState(e.state)}
                 >
-                  <span className="st">{e.state}</span>
-                  <span className="tm">{e.time}</span>
+                  <span className="evwhen">
+                    <span className="st">{e.state}</span>
+                    <span className="tm">{e.time}</span>
+                  </span>
                   <span className="tt">{e.title}</span>
                 </button>
               ))}
