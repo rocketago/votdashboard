@@ -246,26 +246,6 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
         )}
       </div>
 
-      <div className="psec">
-        <h4>Partner organizations</h4>
-        {record.partners.length ? (
-          <div className="plist">
-            {record.partners.map((p) => (
-              <div className="p" key={p}>
-                <b>{p}</b>
-                <span>coalition</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="empty">No formal partners on record.</p>
-        )}
-      </div>
-
-      <div className="pfoot">
-        <button>Open state plan</button>
-        <button className="ghost">Export brief</button>
-      </div>
     </aside>
   )
 }

@@ -15,65 +15,6 @@ import { reportFor } from './reports'
  */
 export type ChapterStatus = 'established' | 'none'
 
-/**
- * Organizational facts about a state: whether there is a chapter, and who we work with.
- *
- * This is deliberately NOT where targeting lives — target types and target districts are
- * derived from `src/data/targets.ts`. Records are kept here for states that have since
- * come off the board, so their chapter and partner history is not lost; a state only
- * reappears on the map when a target is added back for it.
- *
- * PLACEHOLDER DATA: partner lists were assigned during design and have not been
- * confirmed. Chapter status is no longer here — it is derived from the real roster in
- * `chapters.ts`, so a state reads as having a chapter only if Airtable says so.
- */
-export interface StateSource {
-  partners: string[]
-}
-
-export const STATE_SOURCE: Record<string, StateSource> = {
-  AZ: { partners: ['Arizona Youth Vote', 'Chispa AZ'] },
-  GA: { partners: ['New Georgia Project', 'Georgia Shift'] },
-  MI: { partners: ['MI Student Power', 'Detroit Action'] },
-  NC: { partners: ['NC Black Alliance', 'Down Home NC'] },
-  NV: { partners: ['Silver State Voices'] },
-  PA: { partners: ['PA Youth Vote', 'Make the Road PA'] },
-  WI: { partners: ['WI Youth Power', 'BLOC'] },
-  TX: { partners: ['MOVE Texas', 'Jolt Initiative'] },
-
-  FL: { partners: ['Florida Rising', 'Dream Defenders'] },
-  OH: { partners: ['Ohio Student Assoc.'] },
-  VA: { partners: ['New Virginia Majority'] },
-  MN: { partners: ['MN Youth Collective'] },
-  CO: { partners: ['New Era Colorado'] },
-  NH: { partners: ['NH Youth Movement'] },
-  NM: { partners: ['NM Native Vote'] },
-  IA: { partners: [] },
-  ME: { partners: ['Maine Youth Action'] },
-
-  CA: { partners: ['CA Calls', 'Power CA Action'] },
-  NJ: { partners: ['NJ Youth Power'] },
-  NY: { partners: ['NY Youth Agenda'] },
-  IL: { partners: ['Chicago Votes'] },
-  WA: { partners: ['WA Youth Alliance'] },
-  MA: { partners: ['MassVOTE'] },
-  OR: { partners: ['Next Up Action'] },
-  MD: { partners: [] },
-  MO: { partners: [] },
-  TN: { partners: ['The Equity Alliance'] },
-  UT: { partners: [] },
-  CT: { partners: [] },
-  KS: { partners: [] },
-  IN: { partners: [] },
-  MT: { partners: [] },
-  AK: { partners: [] },
-  SC: { partners: [] },
-  LA: { partners: [] },
-  KY: { partners: [] },
-  NE: { partners: [] },
-  OK: { partners: [] },
-  AL: { partners: [] },
-}
 
 export interface StateRecord {
   abbr: string
@@ -95,7 +36,6 @@ export interface StateRecord {
   pledge: number
   /** Students engaged, reported to date. */
   students: number
-  partners: string[]
 }
 
 export const STATE_NAME: Record<string, string> = {
@@ -120,7 +60,6 @@ export const STATE_NAME: Record<string, string> = {
  */
 export const STATES: Record<string, StateRecord> = Object.fromEntries(
   TARGET_STATES.map((abbr) => {
-    const source = STATE_SOURCE[abbr] ?? { partners: [] }
     const types = stateTargetTypes(abbr)
 
     // Real data, from Airtable, which records chapters that exist — so a state either
@@ -141,7 +80,6 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
         chapter,
         chapters: chapters.length,
         ...reportFor(abbr),
-        partners: source.partners,
       } satisfies StateRecord,
     ]
   }),

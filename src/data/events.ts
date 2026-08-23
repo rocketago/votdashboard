@@ -12,14 +12,13 @@ export type ProgramType = 'hip' | 'hd' | 'sip' | 'sd'
 export interface ProgramTypeSpec {
   label: string
   color: string
-  note: string
 }
 
 export const PROGRAM_TYPE: Record<ProgramType, ProgramTypeSpec> = {
-  hip: { label: 'Hard In-Person', color: '#ff7a3d', note: 'direct voter contact, single site' },
-  hd: { label: 'Hard Distributed', color: '#f4d03f', note: 'direct voter contact, many sites or remote' },
-  sip: { label: 'Soft In-Person', color: '#3fd2c7', note: 'community & education, single site' },
-  sd: { label: 'Soft Distributed', color: '#8b7bd8', note: 'community & education, many sites or remote' },
+  hip: { label: 'Hard In-Person', color: '#ff7a3d' },
+  hd: { label: 'Hard Distributed', color: '#f4d03f' },
+  sip: { label: 'Soft In-Person', color: '#3fd2c7' },
+  sd: { label: 'Soft Distributed', color: '#8b7bd8' },
 }
 
 /** Filter order in the sidebar and the legend. */

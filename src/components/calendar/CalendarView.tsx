@@ -77,7 +77,7 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
         {PROGRAM_TYPE_ORDER.map((type) => (
           <div key={type}>
             <i style={{ background: PROGRAM_TYPE[type].color }} />
-            {PROGRAM_TYPE[type].label} — {PROGRAM_TYPE[type].note}
+            {PROGRAM_TYPE[type].label}
           </div>
         ))}
       </div>
