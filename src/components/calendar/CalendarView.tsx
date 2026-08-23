@@ -120,7 +120,9 @@ function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
           const election = isElectionDay(year, month, day)
           return (
             <div
-              className={`cell${events.length ? ' has' : ''}${election ? ' election' : ''}`}
+              className={`cell${events.length ? ' has' : ''}${
+                events.length > 1 ? ' multi' : ''
+              }${election ? ' election' : ''}`}
               key={day}
             >
               <span className="n">{day}</span>
