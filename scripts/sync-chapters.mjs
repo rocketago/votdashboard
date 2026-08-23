@@ -126,6 +126,18 @@ if (has('inspect')) {
   process.exit(0)
 }
 
+/* ---------------- summary ---------------- */
+
+/**
+ * Fields holding personal data, which the summary reports as counts only.
+ *
+ * These tables are chapter intake forms as much as rosters: they carry organiser names,
+ * emails, phone numbers and birthdates. A summary is something you paste into a chat or
+ * a ticket to explain the shape of the data, so it should never carry the data itself.
+ */
+const SENSITIVE = /lead|e-?mail|phone|birth|address|parent|guardian|roster|zip/i
+const SENSITIVE_TYPES = new Set(['email', 'phoneNumber', 'multipleAttachments'])
+
 /* ---------------- dump ---------------- */
 
 if (!baseId) {
@@ -135,6 +147,34 @@ if (!baseId) {
 
 const records = await allRecords(baseId, tableName)
 console.log(`${records.length} record(s) in "${tableName}"`)
+
+if (has('summary')) {
+  const fields = new Map()
+  for (const r of records) {
+    for (const [k, v] of Object.entries(r.fields)) {
+      if (!fields.has(k)) fields.set(k, [])
+      fields.get(k).push(v)
+    }
+  }
+
+  console.log()
+  for (const [name, values] of fields) {
+    const distinct = new Set(values.map((v) => JSON.stringify(v)))
+    const hidden = SENSITIVE.test(name)
+    const head = `  ${name}  ·  ${values.length}/${records.length} populated  ·  ${distinct.size} distinct`
+
+    if (hidden) {
+      console.log(`${head}  ·  [redacted]`)
+      continue
+    }
+
+    // Low-cardinality fields are categories: list them all, they are what the mapping
+    // has to switch on. High-cardinality ones only need a couple of examples.
+    const shown = [...distinct].slice(0, distinct.size <= 12 ? 12 : 3)
+    console.log(`${head}\n      ${shown.join('\n      ')}${distinct.size > shown.length ? `\n      … ${distinct.size - shown.length} more` : ''}`)
+  }
+  process.exit(0)
+}
 
 if (has('dump')) {
   // Field names as they actually come back, with an example value for each — enough to
