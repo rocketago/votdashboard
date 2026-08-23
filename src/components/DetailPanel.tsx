@@ -202,7 +202,10 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
       </div>
 
       <div className="psec">
-        <h4>Campus program{programCounts.length ? ` · ${programCounts.join(' · ')}` : ''}</h4>
+        <h4>
+          Chapters and campus programs
+          {programCounts.length ? ` · ${programCounts.join(' · ')}` : ''}
+        </h4>
         {program.length ? (
           <div className="plist">
             {program.map((entry) => (
