@@ -122,6 +122,11 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
               title={target.types.map((t) => TIER[t].label).join(' + ')}
             >
               {targetLabel(target)}
+              {/* One dot per further designation. The fill can only show the dominant
+                  one, and which races overlap is the point of the board. */}
+              {target.types.slice(1).map((type) => (
+                <i key={type} className="odot" style={{ background: TIER[type].color }} />
+              ))}
             </span>
           ))}
         </div>
