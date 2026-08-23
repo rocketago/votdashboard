@@ -184,18 +184,18 @@ export function DetailPanel({ abbr, onClose }: Props) {
       </div>
 
       <div className="psec">
-        <h4>Campus programs</h4>
+        <h4>Campus programs · {campuses.length}</h4>
         {campuses.length ? (
           <div className="plist">
             {campuses.map((c) => (
               <div className="p" key={c.name}>
                 <b>{c.name}</b>
-                <span>unconfirmed</span>
+                <span>{c.district}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="empty">No campus program yet.</p>
+          <p className="empty">No fellowship campus here.</p>
         )}
       </div>
 

@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 /**
- * Pulls the chapter list out of Airtable and writes it into `src/data/`.
+ * Pulls the organizational data out of Airtable and writes it into `src/data/`.
  *
- *   npm run chapters -- --inspect                 # what bases can this token see?
- *   npm run chapters -- --inspect --base appXXX   # what tables and fields are in one?
- *   npm run chapters -- --base appXXX --table Chapters --dump
+ *   npm run sync                                # refresh chapters and campuses
+ *   npm run sync -- --inspect                   # what bases can this token see?
+ *   npm run sync -- --inspect --base appXXX     # what tables and fields are in one?
+ *   npm run sync -- --base appXXX --table T --summary   # field shape, contact data hidden
+ *   npm run sync -- --base appXXX --table T --dump      # field names and one full record
+ *
+ * Two bases feed this. Chapters come from "VOT Chapters"; the campuses that will carry
+ * fellows come from "VOT 2026 Soft Side Reports", where each campus links to the target
+ * district it sits in and the district name gives the state.
  *
  * This runs at build time, never in the browser. The app is a static site with no
  * server, so anything it fetches at runtime would need the token in the bundle — and the
@@ -13,7 +19,8 @@
  *
  * The token comes from AIRTABLE_TOKEN, in the environment or in a .env file at the repo
  * root (which .gitignore excludes). It needs `schema.bases:read` to inspect and
- * `data.records:read` to sync, scoped to the one base.
+ * `data.records:read` to sync, granted to both bases. Base ids are identifiers, not
+ * secrets, so they live below rather than in .env — only the token does.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -21,6 +28,19 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const API = 'https://api.airtable.com/v0'
+
+/** Where each thing is read from. Overridable by env, but these rarely move. */
+const SOURCE = {
+  chapters: {
+    base: process.env['AIRTABLE_CHAPTERS_BASE'] ?? 'appZ6twX3pDmU8AMI',
+    table: 'Chapter Management',
+  },
+  campuses: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    table: 'Campuses',
+    districts: 'Districts',
+  },
+}
 
 /* ---------------- token ---------------- */
 
@@ -69,8 +89,9 @@ const flag = (name) => {
   return i === -1 ? null : args[i + 1]
 }
 
+// Exploration flags address a base and table explicitly; the sync itself uses SOURCE.
 const baseId = flag('base') ?? process.env['AIRTABLE_BASE']
-const tableName = flag('table') ?? process.env['AIRTABLE_TABLE'] ?? 'Chapters'
+const tableName = flag('table') ?? process.env['AIRTABLE_TABLE']
 
 /* ---------------- api ---------------- */
 
@@ -148,13 +169,16 @@ const SENSITIVE_TYPES = new Set(['email', 'phoneNumber', 'multipleAttachments'])
 
 /* ---------------- dump ---------------- */
 
-if (!baseId) {
-  console.error('Pass --base <appXXXX> (or set AIRTABLE_BASE). Run with --inspect to find it.')
-  process.exit(1)
+if (has('summary') || has('dump')) {
+  if (!baseId || !tableName) {
+    console.error('--summary and --dump need --base <appXXXX> --table <name>.')
+    process.exit(1)
+  }
 }
 
-const records = await allRecords(baseId, tableName)
-console.log(`${records.length} record(s) in "${tableName}"`)
+const records =
+  has('summary') || has('dump') ? await allRecords(baseId, tableName) : []
+if (records.length) console.log(`${records.length} record(s) in "${tableName}"`)
 
 if (has('summary')) {
   const fields = new Map()
@@ -209,7 +233,27 @@ if (has('dump')) {
   process.exit(0)
 }
 
-/* ---------------- mapping ---------------- */
+/* ---------------- shared ---------------- */
+
+const HEADER = (source, note) => `/**
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by \`scripts/sync-airtable.mjs\` from ${source}.
+ * Re-run \`npm run sync\` to refresh it.
+ *
+${note}
+ */
+`
+
+/** Writes a generated module, reporting whether anything actually moved. */
+function emit(file, contents, summary) {
+  const path = resolve(ROOT, 'src/data', file)
+  const before = existsSync(path) ? readFileSync(path, 'utf8') : null
+  writeFileSync(path, contents)
+  console.log(`${summary} -> src/data/${file}${before === contents ? ' (unchanged)' : ''}`)
+}
+
+/* ---------------- chapters ---------------- */
 
 /**
  * Airtable stores the location as a full state name. Both "DC" and "District of
@@ -242,62 +286,49 @@ const SETTING = {
   State: 'state',
 }
 
-const chapters = []
-const problems = []
+async function syncChapters() {
+  const rows = await allRecords(SOURCE.chapters.base, SOURCE.chapters.table)
+  const chapters = []
+  const problems = []
 
-for (const record of records) {
-  const f = record.fields
-  const name = String(f['Name'] ?? '').trim()
-  const rawState = String(f['State or Territory'] ?? '').trim()
-  const abbr = NAME_TO_ABBR[rawState]
-  const kind = KIND[String(f['Chapter Type'] ?? '').trim()]
-  const setting = SETTING[String(f['Campus Type'] ?? '').trim()]
+  for (const record of rows) {
+    const f = record.fields
+    const name = String(f['Name'] ?? '').trim()
+    const rawState = String(f['State or Territory'] ?? '').trim()
+    const abbr = NAME_TO_ABBR[rawState]
+    const kind = KIND[String(f['Chapter Type'] ?? '').trim()]
+    const setting = SETTING[String(f['Campus Type'] ?? '').trim()]
 
-  if (!name) problems.push(`${record.id}: no Name`)
-  else if (!abbr) problems.push(`${name}: unrecognised State or Territory "${rawState}"`)
-  else if (!kind) problems.push(`${name}: unrecognised Chapter Type "${f['Chapter Type']}"`)
-  else if (!setting) problems.push(`${name}: unrecognised Campus Type "${f['Campus Type']}"`)
-  else chapters.push({ name, state: abbr, kind, setting })
-}
+    if (!name) problems.push(`${record.id}: no Name`)
+    else if (!abbr) problems.push(`${name}: unrecognised State or Territory "${rawState}"`)
+    else if (!kind) problems.push(`${name}: unrecognised Chapter Type "${f['Chapter Type']}"`)
+    else if (!setting) problems.push(`${name}: unrecognised Campus Type "${f['Campus Type']}"`)
+    else chapters.push({ name, state: abbr, kind, setting })
+  }
 
-// A row that cannot be mapped is dropped from a roster the dashboard presents as
-// complete, so it is worth stopping over rather than quietly shipping a short list.
-if (problems.length) {
-  console.error(`\n${problems.length} record(s) could not be mapped:\n`)
-  for (const p of problems) console.error(`  ${p}`)
-  console.error('\nFix them in Airtable, or extend the tables in this script.')
-  process.exit(1)
-}
+  if (problems.length) fail('chapters', problems)
 
-chapters.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name))
+  chapters.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name))
 
-const byState = new Map()
-for (const c of chapters) byState.set(c.state, (byState.get(c.state) ?? 0) + 1)
+  const rowsOut = chapters
+    .map(
+      (c) =>
+        `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
+        `kind: '${c.kind}', setting: '${c.setting}' },`,
+    )
+    .join('\n')
 
-const rows = chapters
-  .map(
-    (c) =>
-      `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
-      `kind: '${c.kind}', setting: '${c.setting}' },`,
-  )
-  .join('\n')
-
-// No timestamp in the header: re-running with unchanged data should produce an
-// identical file, so the diff shows what actually moved rather than that it ran.
-const out = `/**
- * GENERATED FILE — do not edit by hand.
- *
- * Written by \`scripts/sync-chapters.mjs\` from the "Chapter Management" table in the
- * VOT Chapters Airtable base. Re-run \`npm run chapters\` to refresh it.
- *
- * This is the real chapter roster, unlike most of \`src/data/\`. Chapter status and
+  emit(
+    'chapters.ts',
+    HEADER(
+      'the "Chapter Management" table in the VOT Chapters base',
+      ` * This is the real chapter roster, unlike most of \`src/data/\`. Chapter status and
  * counts in \`states.ts\` are derived from it rather than hand-set.
  *
- * Airtable carries no coordinates for these — \`Campus Zip\` is populated on a handful
- * of records — so chapters are listed, not mapped. The campus pins on the map still
- * come from the placeholder list in \`campuses.ts\`.
- */
-
+ * Airtable carries no coordinates for these — \`Campus Zip\` is populated on a handful of
+ * records — so chapters are listed, not mapped.`,
+    ) +
+      `
 /** Airtable's \`Chapter Type\`. Only colleges are filed as Campus. */
 export type ChapterKind = 'campus' | 'community'
 
@@ -313,7 +344,7 @@ export interface Chapter {
 }
 
 export const CHAPTERS: Chapter[] = [
-${rows}
+${rowsOut}
 ]
 
 const BY_STATE = CHAPTERS.reduce<Record<string, Chapter[]>>((acc, c) => {
@@ -331,8 +362,130 @@ export const SETTING_LABEL: Record<ChapterSetting, string> = {
   community: 'community',
   state: 'statewide',
 }
-`
+`,
+    `${chapters.length} chapters across ${new Set(chapters.map((c) => c.state)).size} states`,
+  )
+}
 
-writeFileSync(resolve(ROOT, 'src/data/chapters.ts'), out)
+/* ---------------- campuses ---------------- */
 
-console.log(`${chapters.length} chapters across ${byState.size} states -> src/data/chapters.ts`)
+async function syncCampuses() {
+  const { base, table, districts: districtTable } = SOURCE.campuses
+  const [rows, districtRows] = await Promise.all([
+    allRecords(base, table),
+    allRecords(base, districtTable),
+  ])
+
+  // Airtable writes Alaska's at-large seat as AK-AL; the rest of the app uses AK-00,
+  // matching the two-digit district numbers in the map geometry.
+  const districtName = new Map(
+    districtRows.map((d) => [
+      d.id,
+      String(d.fields['District Name'] ?? '').trim().replace(/-AL$/, '-00'),
+    ]),
+  )
+
+  const campuses = []
+  const problems = []
+
+  for (const record of rows) {
+    const name = String(record.fields['Campus'] ?? '').trim()
+    const links = record.fields['Districts'] ?? []
+    const district = districtName.get(links[0])
+
+    if (!name) problems.push(`${record.id}: no Campus name`)
+    else if (!links.length) problems.push(`${name}: not linked to a district`)
+    else if (!district) problems.push(`${name}: district link resolves to nothing`)
+    else if (!/^[A-Z]{2}-\d{2}$/.test(district))
+      problems.push(`${name}: district "${district}" is not a two-letter state and number`)
+    else campuses.push({ name, district, state: district.slice(0, 2) })
+  }
+
+  if (problems.length) fail('campuses', problems)
+
+  campuses.sort((a, b) => a.district.localeCompare(b.district) || a.name.localeCompare(b.name))
+
+  const rowsOut = campuses
+    .map(
+      (c) =>
+        `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
+        `district: '${c.district}' },`,
+    )
+    .join('\n')
+
+  emit(
+    'campuses.ts',
+    HEADER(
+      'the "Campuses" table in the VOT 2026 Soft Side Reports base',
+      ` * The campuses that will carry fellows. Each is linked to a target district in
+ * Airtable, and the district name is where the state comes from — the table itself has
+ * no state column.
+ *
+ * There are no coordinates: Airtable records a campus by name only. \`lat\`/\`lon\` are
+ * therefore optional and currently unset on every record, and the map skips any campus
+ * without them. Adding those two fields in Airtable is what would put these on the map.`,
+    ) +
+      `
+import { STATES } from './states'
+import type { TargetType } from './tiers'
+
+export interface Campus {
+  name: string
+  /** USPS abbreviation, taken from the district the campus is linked to. */
+  state: string
+  /** Target district the campus sits in, e.g. \`'VA-05'\`. */
+  district: string
+  /** Approximate campus centroid. Absent until Airtable carries coordinates. */
+  lat?: number
+  lon?: number
+}
+
+export const CAMPUSES: Campus[] = [
+${rowsOut}
+]
+
+/**
+ * A campus dot takes its state's dominant target type, so campus colouring can never
+ * drift out of step with the board the way a hand-assigned tier would.
+ */
+export function campusType(campus: Campus): TargetType {
+  return STATES[campus.state]?.tier ?? 'dev'
+}
+
+/** A campus with coordinates — the only kind the map can place. */
+export type MappedCampus = Campus & { lat: number; lon: number }
+
+const hasCoords = (c: Campus): c is MappedCampus =>
+  c.lat !== undefined && c.lon !== undefined
+
+/** Campuses that can actually be drawn. Empty until Airtable carries coordinates. */
+export const MAPPABLE_CAMPUSES: MappedCampus[] = CAMPUSES.filter(hasCoords)
+
+const BY_STATE = CAMPUSES.reduce<Record<string, Campus[]>>((acc, c) => {
+  ;(acc[c.state] ??= []).push(c)
+  return acc
+}, {})
+
+export const campusesIn = (abbr: string): Campus[] => BY_STATE[abbr] ?? []
+
+/** Campuses in a state that can be drawn, as opposed to merely listed. */
+export const mappableCampusesIn = (abbr: string): MappedCampus[] =>
+  campusesIn(abbr).filter(hasCoords)
+`,
+    `${campuses.length} campuses across ${new Set(campuses.map((c) => c.district)).size} districts`,
+  )
+}
+
+/**
+ * A row that cannot be mapped would be dropped from a list the dashboard presents as
+ * complete, so it is worth stopping over rather than quietly shipping a short one.
+ */
+function fail(what, problems) {
+  console.error(`\n${problems.length} ${what} record(s) could not be mapped:\n`)
+  for (const p of problems) console.error(`  ${p}`)
+  console.error('\nFix them in Airtable, or extend the tables in this script.')
+  process.exit(1)
+}
+
+await syncChapters()
+await syncCampuses()

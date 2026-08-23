@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "geo": "node scripts/build-geo.mjs",
-    "chapters": "node scripts/sync-chapters.mjs"
+    "sync": "node scripts/sync-airtable.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",

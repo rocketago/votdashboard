@@ -4,7 +4,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 
 import { COLORS, TIER, type TargetType } from '../../data/tiers'
 import { STATES, districtNumber } from '../../data/states'
-import { CAMPUSES, campusType, campusesIn } from '../../data/campuses'
+import { MAPPABLE_CAMPUSES, campusType, mappableCampusesIn } from '../../data/campuses'
 import { eventsIn } from '../../data/events'
 import {
   cachedDistricts,
@@ -341,7 +341,7 @@ function NationalLayers({
 
       {campusLevel && (
         <g>
-          {CAMPUSES.filter((c) => isVisible(c.state)).map((c) => {
+          {MAPPABLE_CAMPUSES.filter((c) => isVisible(c.state)).map((c) => {
             const point = projection([c.lon, c.lat])
             if (!point) return null
             return (
@@ -400,7 +400,8 @@ function StateLayers({
 }: StateProps) {
   const targeted = targetedDistricts(abbr)
   const tierColor = tierColorFor(abbr, activeTypes)
-  const campuses = campusesIn(abbr)
+  // Only the ones with coordinates can be drawn; Airtable has none yet.
+  const campuses = mappableCampusesIn(abbr)
 
   return (
     <>

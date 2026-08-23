@@ -1,15 +1,14 @@
 /**
  * GENERATED FILE — do not edit by hand.
  *
- * Written by `scripts/sync-chapters.mjs` from the "Chapter Management" table in the
- * VOT Chapters Airtable base. Re-run `npm run chapters` to refresh it.
+ * Written by `scripts/sync-airtable.mjs` from the "Chapter Management" table in the VOT Chapters base.
+ * Re-run `npm run sync` to refresh it.
  *
  * This is the real chapter roster, unlike most of `src/data/`. Chapter status and
  * counts in `states.ts` are derived from it rather than hand-set.
  *
- * Airtable carries no coordinates for these — `Campus Zip` is populated on a handful
- * of records — so chapters are listed, not mapped. The campus pins on the map still
- * come from the placeholder list in `campuses.ts`.
+ * Airtable carries no coordinates for these — `Campus Zip` is populated on a handful of
+ * records — so chapters are listed, not mapped.
  */
 
 /** Airtable's `Chapter Type`. Only colleges are filed as Campus. */
