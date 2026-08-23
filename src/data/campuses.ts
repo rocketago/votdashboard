@@ -25,6 +25,11 @@ export interface Campus {
   /** Approximate campus centroid. Absent until Airtable carries coordinates. */
   lat?: number
   lon?: number
+  /**
+   * Radius in degrees of latitude, on a community chapter only. It covers a city or a
+   * region rather than sitting at a point, so it is drawn as that area.
+   */
+  radius?: number
 }
 
 export const CAMPUSES: Campus[] = [

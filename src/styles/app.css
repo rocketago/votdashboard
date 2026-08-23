@@ -87,6 +87,8 @@ svg#map { display: block; width: 100%; height: 100% }
    chapter, so they answer for themselves. */
 .chapdot { pointer-events: none }
 .chapdot.hit { pointer-events: auto }
+.chaparea { pointer-events: none }
+.chaparea.hit { pointer-events: auto }
 .campus { cursor: pointer }
 
 .stats {
@@ -114,6 +116,7 @@ svg#map { display: block; width: 100%; height: 100% }
 
 .cd { stroke: #0d1016; stroke-width: 1; cursor: pointer }
 .cd:hover { stroke: #fff; stroke-width: 1.6 }
+.cd.open { stroke: #fff; stroke-width: 2 }
 .cd.other { cursor: default }
 .cd.other:hover { stroke: #0d1016; stroke-width: 1 }
 .cdlabel {

@@ -42,6 +42,8 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
   const [loadingDistricts, setLoadingDistricts] = useState(false)
   const [districtLabel, setDistrictLabel] = useState<string | null>(null)
   const [tip, setTip] = useState<Tip | null>(null)
+  /** A target district the map is zoomed into, within the selected state. */
+  const [zoomed, setZoomed] = useState<string | null>(null)
 
   const { activeTypes, activeTypesOf, isVisible, visibleStates } = targets
 
@@ -57,6 +59,8 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => setZoomed(null), [selected])
 
   // District boundaries for the selected state, if any are installed.
   useEffect(() => {
@@ -102,9 +106,12 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
     if (!states.length || !width || !height) return null
 
     if (selectedFeature) {
+      // Zoomed into a district, the whole state still draws — it is just fitted to the
+      // one district, so its neighbours run off the edges rather than disappearing.
+      const open = zoomed ? districts.filter((f) => f.district === zoomed) : []
       const fit: FeatureCollection<Geometry> = {
         type: 'FeatureCollection',
-        features: districts.length ? districts : [selectedFeature],
+        features: open.length ? open : districts.length ? districts : [selectedFeature],
       }
       return geoConicConformal()
         .parallels([33, 45])
@@ -125,7 +132,7 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
       ],
       { type: 'FeatureCollection', features: states },
     )
-  }, [states, width, height, selectedFeature, districts])
+  }, [states, width, height, selectedFeature, districts, zoomed])
 
   const path = useMemo(() => (projection ? geoPath(projection) : null), [projection])
 
@@ -171,6 +178,8 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
               path={path}
               projection={projection!}
               activeTypesOf={activeTypesOf}
+              zoomed={zoomed}
+              onZoom={setZoomed}
               onTip={showTip}
               onTipOut={hideTip}
             />
@@ -196,6 +205,8 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
         <StateOverlay
           abbr={selected!}
           districts={districts}
+          zoomed={zoomed}
+          onZoomOut={() => setZoomed(null)}
           loading={loadingDistricts}
           districtLabel={districtLabel}
           activeTypes={activeTypes}
@@ -321,6 +332,8 @@ interface StateProps {
   path: Path
   projection: Projection
   activeTypesOf: (types: readonly TargetType[]) => TargetType[]
+  zoomed: string | null
+  onZoom: (district: string | null) => void
   onTip: (e: MouseEvent, text: string) => void
   onTipOut: () => void
 }
@@ -344,6 +357,8 @@ function StateLayers({
   path,
   projection,
   activeTypesOf,
+  zoomed,
+  onZoom,
   onTip,
   onTipOut,
 }: StateProps) {
@@ -384,7 +399,7 @@ function StateLayers({
           return (
             <path
               key={f.district}
-              className={`cd${isTarget ? '' : ' other'}`}
+              className={`cd${isTarget ? '' : ' other'}${zoomed === f.district ? ' open' : ''}`}
               d={path(f) ?? undefined}
               fill={stripeFill(types, COLORS.districtOther)}
               fillOpacity={isTarget ? 0.92 : 0.85}
@@ -399,6 +414,9 @@ function StateLayers({
                 )
               }
               onMouseLeave={onTipOut}
+              // Only a target district opens; the rest are not clickable anywhere else
+              // in the app either.
+              onClick={isTarget ? () => onZoom(zoomed === f.district ? null : f.district) : undefined}
             />
           )
         })}
@@ -451,12 +469,39 @@ function StateLayers({
         })}
       </g>
 
-      {/* Chapters, at the centre of the state or city they cover. Schools carry no
-          coordinates yet, so they are listed in the panel rather than drawn. */}
+      {/* Chapters. A community chapter covers a city or a region, so it is drawn as that
+          area; a campus is a point. Statewide chapters cover the state already on screen
+          and are listed in the panel instead. */}
       <g>
         {chapters.map((c) => {
           const point = projection([c.lon, c.lat])
           if (!point) return null
+
+          const label = `${c.name} · ${SETTING_LABEL[c.setting]} chapter`
+
+          if (c.radius) {
+            // The radius is in degrees of latitude, so it has to be measured through the
+            // projection rather than scaled — the state view is fitted, not fixed.
+            const edge = projection([c.lon, c.lat + c.radius])
+            const r = edge ? Math.hypot(edge[0] - point[0], edge[1] - point[1]) : 0
+            return (
+              <circle
+                key={`area-${c.name}`}
+                className="chaparea hit"
+                cx={point[0]}
+                cy={point[1]}
+                r={r}
+                fill={COLORS.chapter}
+                fillOpacity={0.16}
+                stroke={COLORS.chapter}
+                strokeWidth={1.4}
+                strokeOpacity={0.75}
+                onMouseMove={(e) => onTip(e, label)}
+                onMouseLeave={onTipOut}
+              />
+            )
+          }
+
           return (
             <circle
               key={`${c.setting}-${c.name}`}
@@ -467,7 +512,7 @@ function StateLayers({
               fill={COLORS.chapter}
               stroke="#fff"
               strokeWidth={1.6}
-              onMouseMove={(e) => onTip(e, `${c.name} · ${SETTING_LABEL[c.setting]} chapter`)}
+              onMouseMove={(e) => onTip(e, label)}
               onMouseLeave={onTipOut}
             />
           )
@@ -480,6 +525,8 @@ function StateLayers({
 interface OverlayProps {
   abbr: string
   districts: DistrictFeature[]
+  zoomed: string | null
+  onZoomOut: () => void
   loading: boolean
   districtLabel: string | null
   activeTypes: (abbr: string) => TargetType[]
@@ -489,6 +536,8 @@ interface OverlayProps {
 function StateOverlay({
   abbr,
   districts,
+  zoomed,
+  onZoomOut,
   loading,
   districtLabel,
   activeTypes,
@@ -514,9 +563,13 @@ function StateOverlay({
     <>
       <div className="statehdr">
         <div>
-          <div className="nm">{STATES[abbr]?.name ?? abbr}</div>
-          <div className="sb">{subtitle}</div>
+          <div className="nm">
+            {zoomed ? `${abbr}-${zoomed}` : (STATES[abbr]?.name ?? abbr)}
+          </div>
+          <div className="sb">{zoomed ? (STATES[abbr]?.name ?? abbr) : subtitle}</div>
         </div>
+        {/* One step out at a time: district to state, then state to the nation. */}
+        {zoomed && <button onClick={onZoomOut}>&larr; {abbr}</button>}
         <button onClick={onClose}>&larr; National map</button>
       </div>
 

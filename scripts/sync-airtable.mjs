@@ -25,8 +25,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { feature as toFeatures } from 'topojson-client'
-import { geoCentroid } from 'd3-geo'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const API = 'https://api.airtable.com/v0'
@@ -302,9 +300,11 @@ const SETTING = {
 }
 
 /**
- * Where a community chapter sits.
+ * The area a community chapter covers: midpoint, then a radius in degrees of latitude.
  *
- * Geocoded once against OpenStreetMap and recorded here, rather than looked up on every
+ * A community chapter is drawn as a circle over its whole area rather than a pin, so it
+ * needs an extent as well as a centre. Both come from the place's bounding box,
+ * geocoded once against OpenStreetMap and recorded here rather than looked up on every
  * sync: the values do not move, and a build should not depend on a third-party service
  * being up. A chapter without an entry stops the sync rather than going unplaced.
  *
@@ -314,18 +314,18 @@ const SETTING = {
  * centre each name is understood to mean.
  */
 const COMMUNITY_PLACE = {
-  'Los Angeles': [34.0537, -118.2428],
-  'San Francisco': [37.7879, -122.4075],
-  Atlanta: [33.7545, -84.3898],
-  Boston: [42.3588, -71.0578],
-  Raleigh: [35.7804, -78.6391],
-  'New York City': [40.7127, -74.006],
-  Cleveland: [41.4997, -81.6937],
-  Seattle: [47.6038, -122.3301],
-  /** Orlando, the region's population centre. */
-  'Central Florida': [28.5421, -81.379],
-  /** Fairfax County, the middle of the NoVA suburbs. */
-  'Northern Virginia': [38.8156, -77.2837],
+  'Los Angeles': [33.9984, -118.4117, 0.339],
+  'San Francisco': [37.785, -122.7276, 0.353],
+  Atlanta: [33.7674, -84.4202, 0.12],
+  Boston: [42.3124, -70.9979, 0.143],
+  Raleigh: [35.8395, -78.6449, 0.141],
+  'New York City': [40.6971, -73.9795, 0.221],
+  Cleveland: [41.4975, -81.7059, 0.13],
+  Seattle: [47.6076, -122.3421, 0.127],
+  /** Orlando and a radius over the metro: the region has no boundary to measure. */
+  'Central Florida': [28.5421, -81.379, 0.85],
+  /** Fairfax County, with a radius over the NoVA suburbs. Also unmeasurable. */
+  'Northern Virginia': [38.8156, -77.2837, 0.35],
 }
 
 /**
@@ -358,24 +358,6 @@ const ZIP_PLACE = {
   '94720': [37.8732, -122.2571],
 }
 
-/**
- * The centre of each state, from the boundaries the app already serves, so a state
- * chapter's marker and its state are drawn from the same geometry.
- */
-function stateCentres() {
-  const path = resolve(ROOT, 'public/geo/states.json')
-  const topology = JSON.parse(readFileSync(path, 'utf8'))
-  const fc = toFeatures(topology, topology.objects.states)
-
-  const centres = new Map()
-  for (const f of fc.features) {
-    const [lon, lat] = geoCentroid(f)
-    // Four decimals is about ten metres, well past what a marker on a state needs.
-    centres.set(f.properties.abbr, [Number(lat.toFixed(4)), Number(lon.toFixed(4))])
-  }
-  return centres
-}
-
 async function syncChapters() {
   const rows = await allRecords(SOURCE.chapters.base, SOURCE.chapters.table)
   const chapters = []
@@ -401,13 +383,19 @@ async function syncChapters() {
   // wherever there is one; a named city is the fallback for a community chapter without.
   // A chapter with neither is listed rather than drawn, which is where the high schools
   // stand. A ZIP we cannot resolve is a gap to close, not something to draw around.
-  const centres = stateCentres()
-
   for (const chapter of chapters) {
-    if (chapter.setting === 'state') {
-      const at = centres.get(chapter.state)
-      if (at) chapter.at = at
-      else problems.push(`${chapter.name}: no boundary for ${chapter.state}`)
+    // A statewide chapter covers the state the map is already showing, so it is listed
+    // rather than marked — a dot at the centroid pointed at nothing in particular.
+    if (chapter.setting === 'state') continue
+
+    // A community chapter is drawn as its area, so the named place wins over its ZIP:
+    // Central Florida's ZIP is a downtown block, not the region the chapter covers.
+    if (chapter.setting === 'community') {
+      const at = COMMUNITY_PLACE[chapter.name]
+      if (at) {
+        chapter.at = [at[0], at[1]]
+        chapter.radius = at[2]
+      } else problems.push(`${chapter.name}: no entry in COMMUNITY_PLACE`)
       continue
     }
 
@@ -420,12 +408,6 @@ async function syncChapters() {
         )
       continue
     }
-
-    if (chapter.setting === 'community') {
-      const at = COMMUNITY_PLACE[chapter.name]
-      if (at) chapter.at = at
-      else problems.push(`${chapter.name}: no ZIP and no entry in COMMUNITY_PLACE`)
-    }
   }
 
   if (problems.length) fail('chapters', problems)
@@ -437,7 +419,8 @@ async function syncChapters() {
       (c) =>
         `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
         `kind: '${c.kind}', setting: '${c.setting}'` +
-        `${c.at ? `, lat: ${c.at[0]}, lon: ${c.at[1]}` : ''} },`,
+        `${c.at ? `, lat: ${c.at[0]}, lon: ${c.at[1]}` : ''}` +
+        `${c.radius ? `, radius: ${c.radius}` : ''} },`,
     )
     .join('\n')
 
@@ -448,8 +431,8 @@ async function syncChapters() {
       ` * This is the real chapter roster, unlike most of \`src/data/\`. Chapter status and
  * counts in \`states.ts\` are derived from it rather than hand-set.
  *
- * Airtable carries no latitude or longitude. Chapters are placed anyway: a statewide one
- * at the centre of its state, a community one at the centre of its city, and a campus at
+ * Airtable carries no latitude or longitude. Chapters are placed anyway: a community one
+ * over the city or region it covers, and a campus at
  * its ZIP. A chapter with no position is listed rather than drawn.`,
     ) +
       `
@@ -472,6 +455,11 @@ export interface Chapter {
    */
   lat?: number
   lon?: number
+  /**
+   * Radius in degrees of latitude, on a community chapter only. It covers a city or a
+   * region rather than sitting at a point, so it is drawn as that area.
+   */
+  radius?: number
 }
 
 export const CHAPTERS: Chapter[] = [
@@ -579,6 +567,11 @@ export interface Campus {
   /** Approximate campus centroid. Absent until Airtable carries coordinates. */
   lat?: number
   lon?: number
+  /**
+   * Radius in degrees of latitude, on a community chapter only. It covers a city or a
+   * region rather than sitting at a point, so it is drawn as that area.
+   */
+  radius?: number
 }
 
 export const CAMPUSES: Campus[] = [
