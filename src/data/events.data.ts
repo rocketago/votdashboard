@@ -8,11 +8,12 @@
  * hand-written in `events.ts`, which re-exports this list.
  *
  * An event targeting races in more than one state appears once per state, so it reaches
- * every organiser it concerns. Dates are the Eastern calendar day, matching the column.
+ * every organiser it concerns.
+ *
+ * Dates and times are Eastern, converted at sync time so nothing depends on the
+ * reader's timezone.
  */
 
 import type { ProgramEvent } from './events'
 
-export const EVENTS: ProgramEvent[] = [
-
-]
+export const EVENTS: ProgramEvent[] = []

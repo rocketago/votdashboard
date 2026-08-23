@@ -585,6 +585,19 @@ const EASTERN_DAY = new Intl.DateTimeFormat('en-CA', {
 })
 
 /**
+ * The start time, Eastern, e.g. "6:00 PM".
+ *
+ * Converted here rather than in the browser, so what ships is already Eastern and a
+ * viewer's own timezone cannot shift it. The dashboard is read across the country and a
+ * 6pm event has one start time, not one per reader.
+ */
+const EASTERN_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
+/**
  * The state a targeted race belongs to. `Targeted Race` mixes district ids with plain
  * state names — "OH-09" and "Ohio" are both valid choices — and Alaska's at-large seat
  * is written AK-AL.
@@ -620,11 +633,13 @@ async function syncEvents() {
     else if (!states.length)
       problems.push(`${title}: Targeted Race ${JSON.stringify(races)} names no state`)
     else {
-      const date = EASTERN_DAY.format(new Date(when))
+      const instant = new Date(when)
+      const date = EASTERN_DAY.format(instant)
+      const time = EASTERN_TIME.format(instant)
       const meta = String(f['Location'] ?? '').trim()
       // An event targeting races in several states is listed in each, so it shows up
       // for every organiser it concerns.
-      for (const state of states) events.push({ date, state, title, meta, type })
+      for (const state of states) events.push({ date, time, state, title, meta, type })
     }
   }
 
@@ -638,8 +653,8 @@ async function syncEvents() {
   const rowsOut = events
     .map(
       (e) =>
-        `  { date: '${e.date}', state: '${e.state}', title: ${JSON.stringify(e.title)}, ` +
-        `meta: ${JSON.stringify(e.meta)}, type: '${e.type}' },`,
+        `  { date: '${e.date}', time: ${JSON.stringify(e.time)}, state: '${e.state}', ` +
+        `title: ${JSON.stringify(e.title)}, meta: ${JSON.stringify(e.meta)}, type: '${e.type}' },`,
     )
     .join('\n')
 
@@ -653,14 +668,15 @@ async function syncEvents() {
  * hand-written in \`events.ts\`, which re-exports this list.
  *
  * An event targeting races in more than one state appears once per state, so it reaches
- * every organiser it concerns. Dates are the Eastern calendar day, matching the column.`,
+ * every organiser it concerns.
+ *
+ * Dates and times are Eastern, converted at sync time so nothing depends on the
+ * reader's timezone.`,
     ) +
       `
 import type { ProgramEvent } from './events'
 
-export const EVENTS: ProgramEvent[] = [
-${rowsOut}
-]
+export const EVENTS: ProgramEvent[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
 `,
     `${events.length} events${blank > 0 ? ` (${rows.length} rows, ${rows.length - events.length} blank or multi-state)` : ''}`,
   )

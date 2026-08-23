@@ -51,7 +51,7 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
       <div className="calhead">
         <h2>Program calendar</h2>
         <span className="c">
-          {shown.length} scheduled events · {stateCount} states
+          {shown.length} scheduled events · {stateCount} states · all times Eastern
         </span>
       </div>
 
@@ -134,6 +134,7 @@ function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
                   onClick={() => onOpenState(e.state)}
                 >
                   <span className="st">{e.state}</span>
+                  <span className="tm">{e.time}</span>
                   <span className="tt">{e.title}</span>
                 </button>
               ))}

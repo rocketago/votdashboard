@@ -211,6 +211,10 @@ svg#map { display: block; width: 100%; height: 100% }
   font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; font-weight: 600;
   color: var(--fg-3); flex: none; padding-top: 1px;
 }
+.evc .tm {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--fg-3);
+  flex: none; white-space: nowrap; padding-top: 1px;
+}
 .evc .tt { font-size: 11px; line-height: 1.25; color: var(--fg); font-weight: 500; min-width: 0; overflow-wrap: anywhere }
 /* Election day. Deliberately not one of the four programme colours, which are all
    spoken for in the legend and would read as a programme type. */

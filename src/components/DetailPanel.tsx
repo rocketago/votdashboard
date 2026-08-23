@@ -175,7 +175,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
                     className="swatch-inline"
                     style={{ background: PROGRAM_TYPE[e.type].color }}
                   />
-                  {PROGRAM_TYPE[e.type].label}
+                  {PROGRAM_TYPE[e.type].label} · {e.time} ET
                   {e.meta ? ` · ${e.meta}` : ''}
                 </div>
               </div>

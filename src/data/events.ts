@@ -26,8 +26,15 @@ export const PROGRAM_TYPE: Record<ProgramType, ProgramTypeSpec> = {
 export const PROGRAM_TYPE_ORDER: readonly ProgramType[] = ['hip', 'hd', 'sip', 'sd'] as const
 
 export interface ProgramEvent {
-  /** ISO `YYYY-MM-DD`. The calendar derives its month range from these. */
+  /** ISO `YYYY-MM-DD`, Eastern. The calendar derives its month range from these. */
   date: string
+  /**
+   * Start time, Eastern, e.g. `'6:00 PM'`.
+   *
+   * Already converted when the data is synced, so it reads the same wherever the
+   * dashboard is opened. Nothing here re-interprets it against the reader's clock.
+   */
+  time: string
   state: string
   title: string
   /** Free-text location / turnout detail. May be empty. */
