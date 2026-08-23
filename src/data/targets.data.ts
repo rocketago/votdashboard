@@ -88,7 +88,6 @@ export const HARD_TARGETS: string[] = [
 ]
 
 export const DEVELOPMENT_TARGETS: string[] = [
-  'MI',
   'NC',
   'NM',
   'NM-02',
@@ -98,4 +97,17 @@ export const DEVELOPMENT_TARGETS: string[] = [
   'VA-01',
   'VA-02',
   'VA-05',
+]
+
+export const SECONDARY_DEVELOPMENT_TARGETS: string[] = [
+  'AZ',
+  'GA',
+  'MI',
+  'MI-07',
+  'OH',
+  'PA',
+  'PA-01',
+  'PA-07',
+  'TX',
+  'WI',
 ]

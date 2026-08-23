@@ -29,19 +29,24 @@ export interface TargetFilters {
  * Facts feed stay scoped to whatever board the map is showing.
  */
 export function useTargetFilters(): TargetFilters {
-  const [filters, setFilters] = useState<Record<TargetFilterKey, boolean>>({
-    soft: true,
-    hard: true,
-    dev: true,
-    chapter: true,
-  })
+  // Built from the key list rather than spelled out, so adding a target type does not
+  // need a matching edit here to become filterable.
+  const allFilters = (on: boolean): Record<TargetFilterKey, boolean> =>
+    Object.fromEntries(TARGET_FILTER_KEYS.map((k) => [k, on])) as Record<
+      TargetFilterKey,
+      boolean
+    >
+
+  const [filters, setFilters] = useState<Record<TargetFilterKey, boolean>>(() =>
+    allFilters(true),
+  )
 
   const setFilter = useCallback((key: TargetFilterKey, on: boolean) => {
     setFilters((prev) => ({ ...prev, [key]: on }))
   }, [])
 
   const setAll = useCallback((on: boolean) => {
-    setFilters({ soft: on, hard: on, dev: on, chapter: on })
+    setFilters(allFilters(on))
   }, [])
 
   const activeTypes = useCallback(

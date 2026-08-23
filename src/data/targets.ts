@@ -23,8 +23,14 @@ export {
   SOFT_TARGETS,
   HARD_TARGETS,
   DEVELOPMENT_TARGETS,
+  SECONDARY_DEVELOPMENT_TARGETS,
 } from './targets.data'
-import { SOFT_TARGETS, HARD_TARGETS, DEVELOPMENT_TARGETS } from './targets.data'
+import {
+  SOFT_TARGETS,
+  HARD_TARGETS,
+  DEVELOPMENT_TARGETS,
+  SECONDARY_DEVELOPMENT_TARGETS,
+} from './targets.data'
 
 /** What kind of contest a target is. */
 export type TargetScope = 'senate' | 'house' | 'state'
@@ -66,6 +72,7 @@ function buildTargets(): Target[] {
   collect(SOFT_TARGETS, 'soft')
   collect(HARD_TARGETS, 'hard')
   collect(DEVELOPMENT_TARGETS, 'dev')
+  collect(SECONDARY_DEVELOPMENT_TARGETS, 'sdev')
 
   return [...types.entries()]
     .map(([id, set]) => ({ id, ...parse(id), types: rankTypes([...set]) }))

@@ -40,7 +40,7 @@ BASE_PATH=/votdashboard/ npm run preview   # http://localhost:4173/votdashboard/
 
 **Map.** The 24-state target board. States are filled by target type; a state carrying
 more than one shows a solid field of its dominant type with slim ribbons of the others
-over it. Ranking is **Soft > Hard > Development** everywhere — the filter order, the
+over it. Ranking is **Soft > Hard > Development > Secondary Development** everywhere — the filter order, the
 dominant fill, and the chip order in the detail panel all read from `TARGET_ORDER` in
 `src/data/tiers.ts`, so reordering that array moves all three together.
 

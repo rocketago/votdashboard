@@ -573,9 +573,10 @@ const TARGET_TYPE = {
   'Soft Target': 'soft',
   'Hard Target': 'hard',
   'Development Target': 'dev',
+  'Secondary Development': 'sdev',
 }
 
-const TARGET_ORDER = ['soft', 'hard', 'dev']
+const TARGET_ORDER = ['soft', 'hard', 'dev', 'sdev']
 
 /**
  * The board, from the Target Type column on States and Districts.
@@ -591,7 +592,7 @@ async function syncTargets() {
     allRecords(base, districtsTable),
   ])
 
-  const byType = { soft: [], hard: [], dev: [] }
+  const byType = Object.fromEntries(TARGET_ORDER.map((t) => [t, []]))
   const problems = []
 
   const assign = (id, raw) => {
@@ -649,6 +650,8 @@ ${list('SOFT_TARGETS', byType.soft)}
 ${list('HARD_TARGETS', byType.hard)}
 
 ${list('DEVELOPMENT_TARGETS', byType.dev)}
+
+${list('SECONDARY_DEVELOPMENT_TARGETS', byType.sdev)}
 `,
     `${total.size} targets (${TARGET_ORDER.map((t) => `${byType[t].length} ${t}`).join(', ')})`,
   )
