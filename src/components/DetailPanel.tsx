@@ -1,11 +1,56 @@
 import { CHAPTER_STATUS, STATE_NAME, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
-import { SETTING_LABEL, chaptersIn } from '../data/chapters'
+import { chaptersIn, type ChapterSetting } from '../data/chapters'
 import { campusesIn } from '../data/campuses'
 import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
 import { targetLabel } from '../data/targets'
 
 const pct = (value: number, goal: number) => Math.min(100, Math.round((value / goal) * 100))
+
+/**
+ * How each kind of chapter reads, and the order the programme is listed in: broadest
+ * footprint first, down to individual campuses, with fellows last.
+ *
+ * Airtable's `Campus Type` is the distinction that matters here — `Chapter Type` only
+ * separates colleges from everything else, so it would fold high schools in with cities.
+ */
+const CHAPTER_LABEL: Record<ChapterSetting, string> = {
+  state: 'state chapter',
+  community: 'community chapter',
+  college: 'campus chapter',
+  'high-school': 'high school chapter',
+}
+
+const CHAPTER_ORDER: ChapterSetting[] = ['state', 'community', 'college', 'high-school']
+
+interface ProgramEntry {
+  name: string
+  detail: string
+  label: string
+}
+
+/**
+ * Everything the campus program runs in a state: chapters of every kind, then the
+ * campuses carrying fellows. The two come from different Airtable bases and are
+ * genuinely different things, but they are one programme to the organiser reading this.
+ */
+function programIn(abbr: string): ProgramEntry[] {
+  const chapters = chaptersIn(abbr)
+    .map((c) => ({ name: c.name, detail: CHAPTER_LABEL[c.setting], label: c.setting }))
+    .sort(
+      (a, b) =>
+        CHAPTER_ORDER.indexOf(a.label as ChapterSetting) -
+          CHAPTER_ORDER.indexOf(b.label as ChapterSetting) || a.name.localeCompare(b.name),
+    )
+
+  const fellows = campusesIn(abbr).map((c) => ({
+    name: c.name,
+    detail: `fellows · ${c.district}`,
+    label: 'fellows',
+  }))
+
+  return [...chapters, ...fellows]
+}
 
 interface Props {
   /** The state to describe, or null when nothing is selected. */
@@ -47,7 +92,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
   const chapter = CHAPTER_STATUS[record.chapter]
   const events = eventsIn(abbr)
   const chapters = chaptersIn(abbr)
-  const campuses = campusesIn(abbr)
+  const program = programIn(abbr)
   const tierColor = TIER[record.tier].color
 
   return (
@@ -168,34 +213,18 @@ export function DetailPanel({ abbr, onClose }: Props) {
       </div>
 
       <div className="psec">
-        <h4>Chapters · {chapters.length}</h4>
-        {chapters.length ? (
+        <h4>Campus program · {program.length}</h4>
+        {program.length ? (
           <div className="plist">
-            {chapters.map((c) => (
-              <div className="p" key={c.name}>
-                <b>{c.name}</b>
-                <span>{SETTING_LABEL[c.setting]}</span>
+            {program.map((entry) => (
+              <div className="p" key={`${entry.label}-${entry.name}`}>
+                <b>{entry.name}</b>
+                <span>{entry.detail}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="empty">No chartered chapter here yet.</p>
-        )}
-      </div>
-
-      <div className="psec">
-        <h4>Campus programs · {campuses.length}</h4>
-        {campuses.length ? (
-          <div className="plist">
-            {campuses.map((c) => (
-              <div className="p" key={c.name}>
-                <b>{c.name}</b>
-                <span>{c.district}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="empty">No fellowship campus here.</p>
+          <p className="empty">Nothing running here yet.</p>
         )}
       </div>
 
