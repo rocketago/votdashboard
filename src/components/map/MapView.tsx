@@ -3,6 +3,7 @@ import { geoAlbersUsa, geoConicConformal, geoPath } from 'd3-geo'
 import type { FeatureCollection, Geometry } from 'geojson'
 
 import { COLORS, TIER, type TargetType } from '../../data/tiers'
+import { placedChaptersIn } from '../../data/chapters'
 import { mappableCampusesIn } from '../../data/campuses'
 import { STATES, districtNumber } from '../../data/states'
 import { targetsIn } from '../../data/targets'
@@ -358,6 +359,7 @@ function StateLayers({
   }, [abbr, activeTypesOf])
   // Only the ones with coordinates can be drawn; Airtable has none yet.
   const campuses = mappableCampusesIn(abbr)
+  const chapters = placedChaptersIn(abbr)
 
   return (
     <>
@@ -448,6 +450,27 @@ function StateLayers({
           )
         })}
       </g>
+
+      {/* Chapters, at the centre of the state or city they cover. Schools carry no
+          coordinates yet, so they are listed in the panel rather than drawn. */}
+      <g>
+        {chapters.map((c) => {
+          const point = projection([c.lon, c.lat])
+          if (!point) return null
+          return (
+            <circle
+              key={`${c.setting}-${c.name}`}
+              className="chapdot"
+              cx={point[0]}
+              cy={point[1]}
+              r={5}
+              fill={COLORS.chapter}
+              stroke="#fff"
+              strokeWidth={1.6}
+            />
+          )
+        })}
+      </g>
     </>
   )
 }
@@ -503,6 +526,16 @@ function StateOverlay({
         <div>
           <i style={{ background: COLORS.districtOther }} />
           Other district
+        </div>
+        <div>
+          <i
+            style={{
+              background: COLORS.chapter,
+              borderRadius: '50%',
+              boxShadow: '0 0 0 1.5px #fff',
+            }}
+          />
+          Chapter
         </div>
         <div>
           <i style={{ background: COLORS.campus, borderRadius: '50%' }} />

@@ -25,6 +25,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { feature as toFeatures } from 'topojson-client'
+import { geoCentroid } from 'd3-geo'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const API = 'https://api.airtable.com/v0'
@@ -299,6 +301,51 @@ const SETTING = {
   State: 'state',
 }
 
+/**
+ * Where a community chapter sits.
+ *
+ * Geocoded once against OpenStreetMap and recorded here, rather than looked up on every
+ * sync: the values do not move, and a build should not depend on a third-party service
+ * being up. A chapter without an entry stops the sync rather than going unplaced.
+ *
+ * The two regions are a judgement call, not a lookup. "Central Florida" and "Northern
+ * Virginia" are not places a geocoder knows — asked directly, it returns a sugar mill in
+ * Cuba and a town in the Northern Territory — so they are anchored on the population
+ * centre each name is understood to mean.
+ */
+const COMMUNITY_PLACE = {
+  'Los Angeles': [34.0537, -118.2428],
+  'San Francisco': [37.7879, -122.4075],
+  Atlanta: [33.7545, -84.3898],
+  Boston: [42.3588, -71.0578],
+  Raleigh: [35.7804, -78.6391],
+  'New York City': [40.7127, -74.006],
+  Cleveland: [41.4997, -81.6937],
+  Seattle: [47.6038, -122.3301],
+  /** Orlando, the region's population centre. */
+  'Central Florida': [28.5421, -81.379],
+  /** Fairfax County, the middle of the NoVA suburbs. */
+  'Northern Virginia': [38.8156, -77.2837],
+}
+
+/**
+ * The centre of each state, from the boundaries the app already serves, so a state
+ * chapter's marker and its state are drawn from the same geometry.
+ */
+function stateCentres() {
+  const path = resolve(ROOT, 'public/geo/states.json')
+  const topology = JSON.parse(readFileSync(path, 'utf8'))
+  const fc = toFeatures(topology, topology.objects.states)
+
+  const centres = new Map()
+  for (const f of fc.features) {
+    const [lon, lat] = geoCentroid(f)
+    // Four decimals is about ten metres, well past what a marker on a state needs.
+    centres.set(f.properties.abbr, [Number(lat.toFixed(4)), Number(lon.toFixed(4))])
+  }
+  return centres
+}
+
 async function syncChapters() {
   const rows = await allRecords(SOURCE.chapters.base, SOURCE.chapters.table)
   const chapters = []
@@ -319,6 +366,20 @@ async function syncChapters() {
     else chapters.push({ name, state: abbr, kind, setting })
   }
 
+  // Statewide and community chapters get a position; schools do not yet.
+  const centres = stateCentres()
+  for (const chapter of chapters) {
+    if (chapter.setting === 'state') {
+      const at = centres.get(chapter.state)
+      if (at) chapter.at = at
+      else problems.push(`${chapter.name}: no boundary for ${chapter.state}`)
+    } else if (chapter.setting === 'community') {
+      const at = COMMUNITY_PLACE[chapter.name]
+      if (at) chapter.at = at
+      else problems.push(`${chapter.name}: no coordinates — add it to COMMUNITY_PLACE`)
+    }
+  }
+
   if (problems.length) fail('chapters', problems)
 
   chapters.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name))
@@ -327,7 +388,8 @@ async function syncChapters() {
     .map(
       (c) =>
         `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
-        `kind: '${c.kind}', setting: '${c.setting}' },`,
+        `kind: '${c.kind}', setting: '${c.setting}'` +
+        `${c.at ? `, lat: ${c.at[0]}, lon: ${c.at[1]}` : ''} },`,
     )
     .join('\n')
 
@@ -338,8 +400,9 @@ async function syncChapters() {
       ` * This is the real chapter roster, unlike most of \`src/data/\`. Chapter status and
  * counts in \`states.ts\` are derived from it rather than hand-set.
  *
- * Airtable carries no coordinates for these — \`Campus Zip\` is populated on a handful of
- * records — so chapters are listed, not mapped.`,
+ * Airtable carries no coordinates for these. Statewide and community chapters are
+ * placed anyway — the first at the centre of its state, the second at the centre of its
+ * city — so they can be drawn. Schools cannot be, and are listed only.`,
     ) +
       `
 /** Airtable's \`Chapter Type\`. Only colleges are filed as Campus. */
@@ -354,6 +417,13 @@ export interface Chapter {
   state: string
   kind: ChapterKind
   setting: ChapterSetting
+  /**
+   * Where to draw it, when that is known. A statewide chapter sits at the centre of its
+   * state and a community chapter at the centre of its city; schools have no coordinates
+   * yet, and are listed rather than mapped.
+   */
+  lat?: number
+  lon?: number
 }
 
 export const CHAPTERS: Chapter[] = [
@@ -367,6 +437,16 @@ const BY_STATE = CHAPTERS.reduce<Record<string, Chapter[]>>((acc, c) => {
 
 /** Every chapter in a state, alphabetically. Empty where there are none. */
 export const chaptersIn = (abbr: string): Chapter[] => BY_STATE[abbr] ?? []
+
+/** A chapter that can be drawn on a map. */
+export type PlacedChapter = Chapter & { lat: number; lon: number }
+
+const isPlaced = (c: Chapter): c is PlacedChapter =>
+  c.lat !== undefined && c.lon !== undefined
+
+/** Chapters in a state that carry a position. Schools do not, yet. */
+export const placedChaptersIn = (abbr: string): PlacedChapter[] =>
+  chaptersIn(abbr).filter(isPlaced)
 
 /** How a chapter's setting reads in the UI. */
 export const SETTING_LABEL: Record<ChapterSetting, string> = {

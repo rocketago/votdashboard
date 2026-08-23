@@ -7,8 +7,9 @@
  * This is the real chapter roster, unlike most of `src/data/`. Chapter status and
  * counts in `states.ts` are derived from it rather than hand-set.
  *
- * Airtable carries no coordinates for these — `Campus Zip` is populated on a handful of
- * records — so chapters are listed, not mapped.
+ * Airtable carries no coordinates for these. Statewide and community chapters are
+ * placed anyway — the first at the centre of its state, the second at the centre of its
+ * city — so they can be drawn. Schools cannot be, and are listed only.
  */
 
 /** Airtable's `Chapter Type`. Only colleges are filed as Campus. */
@@ -23,11 +24,18 @@ export interface Chapter {
   state: string
   kind: ChapterKind
   setting: ChapterSetting
+  /**
+   * Where to draw it, when that is known. A statewide chapter sits at the centre of its
+   * state and a community chapter at the centre of its city; schools have no coordinates
+   * yet, and are listed rather than mapped.
+   */
+  lat?: number
+  lon?: number
 }
 
 export const CHAPTERS: Chapter[] = [
   { name: "Calabasas High School", state: 'CA', kind: 'community', setting: 'high-school' },
-  { name: "California", state: 'CA', kind: 'community', setting: 'state' },
+  { name: "California", state: 'CA', kind: 'community', setting: 'state', lat: 37.1843, lon: -119.472 },
   { name: "Campolindo High School", state: 'CA', kind: 'community', setting: 'high-school' },
   { name: "Canyon High School", state: 'CA', kind: 'community', setting: 'high-school' },
   { name: "Cerritos College", state: 'CA', kind: 'campus', setting: 'college' },
@@ -35,16 +43,16 @@ export const CHAPTERS: Chapter[] = [
   { name: "Del Norte High School", state: 'CA', kind: 'community', setting: 'high-school' },
   { name: "Head-Royce School", state: 'CA', kind: 'community', setting: 'high-school' },
   { name: "Hoover High School", state: 'CA', kind: 'community', setting: 'high-school' },
-  { name: "Los Angeles", state: 'CA', kind: 'community', setting: 'community' },
+  { name: "Los Angeles", state: 'CA', kind: 'community', setting: 'community', lat: 34.0537, lon: -118.2428 },
   { name: "Martin Luther King High School", state: 'CA', kind: 'community', setting: 'high-school' },
   { name: "Pioneer High School", state: 'CA', kind: 'community', setting: 'high-school' },
-  { name: "San Francisco", state: 'CA', kind: 'community', setting: 'community' },
+  { name: "San Francisco", state: 'CA', kind: 'community', setting: 'community', lat: 37.7879, lon: -122.4075 },
   { name: "University of California-Berkeley", state: 'CA', kind: 'campus', setting: 'college' },
   { name: "University of California-Los Angeles", state: 'CA', kind: 'campus', setting: 'college' },
-  { name: "DC", state: 'DC', kind: 'community', setting: 'state' },
+  { name: "DC", state: 'DC', kind: 'community', setting: 'state', lat: 38.9042, lon: -77.015 },
   { name: "George Washington University", state: 'DC', kind: 'campus', setting: 'college' },
-  { name: "Central Florida", state: 'FL', kind: 'community', setting: 'community' },
-  { name: "Florida", state: 'FL', kind: 'community', setting: 'state' },
+  { name: "Central Florida", state: 'FL', kind: 'community', setting: 'community', lat: 28.5421, lon: -81.379 },
+  { name: "Florida", state: 'FL', kind: 'community', setting: 'state', lat: 28.62, lon: -82.456 },
   { name: "Florida Atlantic University", state: 'FL', kind: 'campus', setting: 'college' },
   { name: "New College of Florida", state: 'FL', kind: 'campus', setting: 'college' },
   { name: "Rollins College", state: 'FL', kind: 'campus', setting: 'college' },
@@ -52,29 +60,29 @@ export const CHAPTERS: Chapter[] = [
   { name: "University of Miami", state: 'FL', kind: 'campus', setting: 'college' },
   { name: "University of South Florida", state: 'FL', kind: 'campus', setting: 'college' },
   { name: "University of Tampa", state: 'FL', kind: 'campus', setting: 'college' },
-  { name: "Atlanta", state: 'GA', kind: 'community', setting: 'community' },
+  { name: "Atlanta", state: 'GA', kind: 'community', setting: 'community', lat: 33.7545, lon: -84.3898 },
   { name: "Georgia Institute of Technology", state: 'GA', kind: 'campus', setting: 'college' },
   { name: "Georgia State University", state: 'GA', kind: 'campus', setting: 'college' },
-  { name: "Illinois", state: 'IL', kind: 'community', setting: 'state' },
+  { name: "Illinois", state: 'IL', kind: 'community', setting: 'state', lat: 40.0416, lon: -89.1965 },
   { name: "Indiana University-Bloomington", state: 'IN', kind: 'campus', setting: 'college' },
-  { name: "Kansas", state: 'KS', kind: 'community', setting: 'state' },
-  { name: "Boston", state: 'MA', kind: 'community', setting: 'community' },
+  { name: "Kansas", state: 'KS', kind: 'community', setting: 'state', lat: 38.4935, lon: -98.3787 },
+  { name: "Boston", state: 'MA', kind: 'community', setting: 'community', lat: 42.3588, lon: -71.0578 },
   { name: "University of Massachusetts-Amherst", state: 'MA', kind: 'campus', setting: 'college' },
-  { name: "Maryland", state: 'MD', kind: 'community', setting: 'state' },
+  { name: "Maryland", state: 'MD', kind: 'community', setting: 'state', lat: 39.0391, lon: -76.7656 },
   { name: "Eureka High School", state: 'MO', kind: 'community', setting: 'high-school' },
   { name: "Cary Academy", state: 'NC', kind: 'community', setting: 'high-school' },
-  { name: "Raleigh", state: 'NC', kind: 'community', setting: 'community' },
-  { name: "New York City", state: 'NY', kind: 'community', setting: 'community' },
+  { name: "Raleigh", state: 'NC', kind: 'community', setting: 'community', lat: 35.7804, lon: -78.6391 },
+  { name: "New York City", state: 'NY', kind: 'community', setting: 'community', lat: 40.7127, lon: -74.006 },
   { name: "Westhampton Beach High School", state: 'NY', kind: 'community', setting: 'high-school' },
-  { name: "Cleveland", state: 'OH', kind: 'community', setting: 'community' },
-  { name: "Oklahoma", state: 'OK', kind: 'community', setting: 'state' },
-  { name: "Oregon", state: 'OR', kind: 'community', setting: 'state' },
+  { name: "Cleveland", state: 'OH', kind: 'community', setting: 'community', lat: 41.4997, lon: -81.6937 },
+  { name: "Oklahoma", state: 'OK', kind: 'community', setting: 'state', lat: 35.5893, lon: -97.494 },
+  { name: "Oregon", state: 'OR', kind: 'community', setting: 'state', lat: 43.9345, lon: -120.5615 },
   { name: "Penn State University", state: 'PA', kind: 'campus', setting: 'college' },
   { name: "Hampton University", state: 'VA', kind: 'campus', setting: 'college' },
-  { name: "Northern Virginia", state: 'VA', kind: 'community', setting: 'community' },
+  { name: "Northern Virginia", state: 'VA', kind: 'community', setting: 'community', lat: 38.8156, lon: -77.2837 },
   { name: "Richard Bland College", state: 'VA', kind: 'campus', setting: 'college' },
-  { name: "Virginia", state: 'VA', kind: 'community', setting: 'state' },
-  { name: "Seattle", state: 'WA', kind: 'community', setting: 'community' },
+  { name: "Virginia", state: 'VA', kind: 'community', setting: 'state', lat: 37.5207, lon: -78.8212 },
+  { name: "Seattle", state: 'WA', kind: 'community', setting: 'community', lat: 47.6038, lon: -122.3301 },
 ]
 
 const BY_STATE = CHAPTERS.reduce<Record<string, Chapter[]>>((acc, c) => {
@@ -84,6 +92,16 @@ const BY_STATE = CHAPTERS.reduce<Record<string, Chapter[]>>((acc, c) => {
 
 /** Every chapter in a state, alphabetically. Empty where there are none. */
 export const chaptersIn = (abbr: string): Chapter[] => BY_STATE[abbr] ?? []
+
+/** A chapter that can be drawn on a map. */
+export type PlacedChapter = Chapter & { lat: number; lon: number }
+
+const isPlaced = (c: Chapter): c is PlacedChapter =>
+  c.lat !== undefined && c.lon !== undefined
+
+/** Chapters in a state that carry a position. Schools do not, yet. */
+export const placedChaptersIn = (abbr: string): PlacedChapter[] =>
+  chaptersIn(abbr).filter(isPlaced)
 
 /** How a chapter's setting reads in the UI. */
 export const SETTING_LABEL: Record<ChapterSetting, string> = {
