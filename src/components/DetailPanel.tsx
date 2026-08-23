@@ -90,7 +90,15 @@ export function DetailPanel({ abbr, onClose }: Props) {
   const chapter = CHAPTER_STATUS[record.chapter]
   const events = eventsIn(abbr)
   const chapters = chaptersIn(abbr)
+  const campuses = campusesIn(abbr)
   const program = programIn(abbr)
+
+  // The section mixes two things, so the heading counts them separately rather than
+  // reporting a total that is neither a chapter count nor a campus count.
+  const programCounts = [
+    chapters.length && `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`,
+    campuses.length && `${campuses.length} fellowship campus${campuses.length === 1 ? '' : 'es'}`,
+  ].filter(Boolean)
 
   return (
     <aside className="panel">
@@ -147,6 +155,10 @@ export function DetailPanel({ abbr, onClose }: Props) {
             <div className="k">Students engaged</div>
             <div className="v mono">{record.students.toLocaleString()}</div>
           </div>
+          <div className="metric">
+            <div className="k">Chapters</div>
+            <div className="v mono">{record.chapters}</div>
+          </div>
         </div>
       </div>
 
@@ -197,7 +209,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
       </div>
 
       <div className="psec">
-        <h4>Campus program · {program.length}</h4>
+        <h4>Campus program{programCounts.length ? ` · ${programCounts.join(' · ')}` : ''}</h4>
         {program.length ? (
           <div className="plist">
             {program.map((entry) => (
