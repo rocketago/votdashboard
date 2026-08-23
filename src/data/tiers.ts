@@ -10,9 +10,12 @@ export const TIER: Record<TargetType, TierSpec> = {
   hard: { label: 'Hard Target', color: '#ff7a3d' },
   soft: { label: 'Soft Target', color: '#3fd2c7' },
   dev: { label: 'Development Target', color: '#8b7bd8' },
-  // A magenta, sitting clear of the teal, orange and violet either side of it — the
-  // dots on an overlapping chip are 6px, so neighbouring hues would read as the same.
-  sdev: { label: 'Secondary Development', color: '#e06fb4' },
+  // Green, chosen against the other three rather than in isolation. It has to survive
+  // three tests: solid beside a Development state (Arizona borders Nevada), a ribbon
+  // over Hard orange, which is how eight of the ten carry it, and a 6px dot on a chip.
+  // A magenta read as Development at every size; green is the furthest hue from it that
+  // still separates from the Soft teal.
+  sdev: { label: 'Secondary Development', color: '#63c76a' },
 }
 
 /**

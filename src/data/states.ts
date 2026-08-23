@@ -58,9 +58,28 @@ export const STATE_NAME: Record<string, string> = {
  * metrics resolved. A state with no targets is absent, and the detail panel treats it
  * as "not on the target board".
  */
+/** Designations that describe a programme in a state rather than a race in it. */
+const DEVELOPMENT_TYPES: TargetType[] = ['dev', 'sdev']
+
+/**
+ * The order a state's designations read in on the national board, strongest first.
+ *
+ * Normally the global ranking. But a state can be a Development target statewide while
+ * carrying Soft or Hard districts — New Mexico and Virginia both do — and the national
+ * view is about the state, so a statewide Development designation leads there instead of
+ * being buried under a district's. Zoom in and the districts still show their own.
+ */
+function stateTypeOrder(abbr: string, types: TargetType[]): TargetType[] {
+  const statewide = targetsIn(abbr).find((t) => t.scope === 'state')?.types ?? []
+  if (statewide.includes('soft') || statewide.includes('hard')) return types
+
+  const lead = types.find((t) => DEVELOPMENT_TYPES.includes(t))
+  return lead ? [lead, ...types.filter((t) => t !== lead)] : types
+}
+
 export const STATES: Record<string, StateRecord> = Object.fromEntries(
   TARGET_STATES.map((abbr) => {
-    const types = stateTargetTypes(abbr)
+    const types = stateTypeOrder(abbr, stateTargetTypes(abbr))
 
     // Real data, from Airtable, which records chapters that exist — so a state either
     // has chapters or it does not. Anything in development lives in the Start a Chapter
