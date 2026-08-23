@@ -329,6 +329,36 @@ const COMMUNITY_PLACE = {
 }
 
 /**
+ * Campus ZIPs, geocoded once against OpenStreetMap and recorded here for the same reason
+ * as the cities above: the values do not move, and a build should not reach out to a
+ * third party. Every one was checked to land in the state Airtable files it under.
+ *
+ * `npm run sync -- --geocode-zips` prints entries for any ZIP in Airtable that is
+ * missing from this table.
+ */
+const ZIP_PLACE = {
+  '01002': [42.3832, -72.5199],
+  '16802': [40.8015, -77.8615],
+  '20052': [38.9101, -77.0286],
+  '23668': [37.0218, -76.3366],
+  '23875': [37.2359, -77.285],
+  '32801': [28.5433, -81.3768],
+  '30303': [33.7539, -84.3898],
+  '30332': [33.7747, -84.3947],
+  '32789': [28.5989, -81.3497],
+  '32816': [28.6023, -81.1995],
+  '33146': [25.7207, -80.2722],
+  '33431': [26.3764, -80.1039],
+  '33606': [27.9366, -82.4674],
+  '33620': [28.0628, -82.4137],
+  '34243': [27.4031, -82.5221],
+  '47405': [39.1681, -86.5194],
+  '90024': [34.0614, -118.4439],
+  '90650': [33.9063, -118.0886],
+  '94720': [37.8732, -122.2571],
+}
+
+/**
  * The centre of each state, from the boundaries the app already serves, so a state
  * chapter's marker and its state are drawn from the same geometry.
  */
@@ -358,25 +388,43 @@ async function syncChapters() {
     const abbr = NAME_TO_ABBR[rawState]
     const kind = KIND[String(f['Chapter Type'] ?? '').trim()]
     const setting = SETTING[String(f['Campus Type'] ?? '').trim()]
+    const zip = String(f['Campus Zip'] ?? '').trim()
 
     if (!name) problems.push(`${record.id}: no Name`)
     else if (!abbr) problems.push(`${name}: unrecognised State or Territory "${rawState}"`)
     else if (!kind) problems.push(`${name}: unrecognised Chapter Type "${f['Chapter Type']}"`)
     else if (!setting) problems.push(`${name}: unrecognised Campus Type "${f['Campus Type']}"`)
-    else chapters.push({ name, state: abbr, kind, setting })
+    else chapters.push({ name, state: abbr, kind, setting, zip })
   }
 
-  // Statewide and community chapters get a position; schools do not yet.
+  // Where a chapter is drawn. A ZIP is the most precise thing Airtable holds and wins
+  // wherever there is one; a named city is the fallback for a community chapter without.
+  // A chapter with neither is listed rather than drawn, which is where the high schools
+  // stand. A ZIP we cannot resolve is a gap to close, not something to draw around.
   const centres = stateCentres()
+
   for (const chapter of chapters) {
     if (chapter.setting === 'state') {
       const at = centres.get(chapter.state)
       if (at) chapter.at = at
       else problems.push(`${chapter.name}: no boundary for ${chapter.state}`)
-    } else if (chapter.setting === 'community') {
+      continue
+    }
+
+    if (chapter.zip) {
+      const at = ZIP_PLACE[chapter.zip]
+      if (at) chapter.at = at
+      else
+        problems.push(
+          `${chapter.name}: ZIP ${chapter.zip} is not in ZIP_PLACE — run npm run sync -- --geocode-zips`,
+        )
+      continue
+    }
+
+    if (chapter.setting === 'community') {
       const at = COMMUNITY_PLACE[chapter.name]
       if (at) chapter.at = at
-      else problems.push(`${chapter.name}: no coordinates — add it to COMMUNITY_PLACE`)
+      else problems.push(`${chapter.name}: no ZIP and no entry in COMMUNITY_PLACE`)
     }
   }
 
@@ -400,9 +448,9 @@ async function syncChapters() {
       ` * This is the real chapter roster, unlike most of \`src/data/\`. Chapter status and
  * counts in \`states.ts\` are derived from it rather than hand-set.
  *
- * Airtable carries no coordinates for these. Statewide and community chapters are
- * placed anyway — the first at the centre of its state, the second at the centre of its
- * city — so they can be drawn. Schools cannot be, and are listed only.`,
+ * Airtable carries no latitude or longitude. Chapters are placed anyway: a statewide one
+ * at the centre of its state, a community one at the centre of its city, and a campus at
+ * its ZIP. A chapter with no position is listed rather than drawn.`,
     ) +
       `
 /** Airtable's \`Chapter Type\`. Only colleges are filed as Campus. */
@@ -646,6 +694,70 @@ export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
   )
 }
 
+/* ---------------- geocoding helper ---------------- */
+
+/**
+ * Prints ZIP_PLACE entries for any campus ZIP the table does not cover.
+ *
+ * Separate from the sync on purpose. Geocoding is a one-off for each new campus, and a
+ * build that reaches out to a third party fails on their outage rather than ours — so
+ * the values are pasted in and committed, not fetched.
+ *
+ * Each result is checked against the state Airtable files the chapter under, because a
+ * geocoder answers even when it should not: asked for "Northern Virginia" it returns a
+ * town in the Northern Territory.
+ */
+async function geocodeZips() {
+  const rows = await allRecords(SOURCE.chapters.base, SOURCE.chapters.table)
+  const missing = []
+
+  for (const record of rows) {
+    const zip = String(record.fields['Campus Zip'] ?? '').trim()
+    if (!zip || ZIP_PLACE[zip]) continue
+    missing.push({
+      zip,
+      name: String(record.fields['Name'] ?? '').trim(),
+      state: String(record.fields['State or Territory'] ?? '').trim(),
+    })
+  }
+
+  if (!missing.length) {
+    console.log('Every campus ZIP in Airtable is already in ZIP_PLACE.')
+    return
+  }
+
+  console.log(`${missing.length} ZIP(s) to add:\n`)
+
+  for (const [i, m] of missing.entries()) {
+    // Nominatim asks for no more than one request a second.
+    if (i) await new Promise((r) => setTimeout(r, 1200))
+
+    const url = new URL('https://nominatim.openstreetmap.org/search')
+    url.searchParams.set('postalcode', m.zip)
+    url.searchParams.set('country', 'us')
+    url.searchParams.set('format', 'json')
+    url.searchParams.set('limit', '1')
+    url.searchParams.set('addressdetails', '1')
+
+    const res = await fetch(url, { headers: { 'User-Agent': 'votdashboard-setup/1.0' } })
+    const hit = (await res.json())[0]
+
+    if (!hit) {
+      console.log(`  // ${m.name}: ZIP ${m.zip} did not resolve`)
+      continue
+    }
+
+    const got = hit.address?.state ?? ''
+    const agrees = got.toLowerCase() === m.state.toLowerCase()
+    const line = `  '${m.zip}': [${(+hit.lat).toFixed(4)}, ${(+hit.lon).toFixed(4)}],`
+    console.log(
+      agrees
+        ? `${line}  // ${m.name}, ${got}`
+        : `${line}  // *** ${m.name}: Airtable says ${m.state}, this ZIP is in ${got} ***`,
+    )
+  }
+}
+
 /* ---------------- the target board ---------------- */
 
 /** Airtable's `Target Type` choices. */
@@ -867,6 +979,11 @@ function fail(what, problems) {
   for (const p of problems) console.error(`  ${p}`)
   console.error('\nFix them in Airtable, or extend the tables in this script.')
   process.exit(1)
+}
+
+if (has('geocode-zips')) {
+  await geocodeZips()
+  process.exit(0)
 }
 
 await syncChapters()
