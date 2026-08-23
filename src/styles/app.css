@@ -212,6 +212,14 @@ svg#map { display: block; width: 100%; height: 100% }
   color: var(--fg-3); flex: none; padding-top: 1px;
 }
 .evc .tt { font-size: 11px; line-height: 1.25; color: var(--fg); font-weight: 500; min-width: 0; overflow-wrap: anywhere }
+/* Election day. Deliberately not one of the four programme colours, which are all
+   spoken for in the legend and would read as a programme type. */
+.cell.election { background: rgba(238, 242, 247, .07); box-shadow: inset 0 0 0 1px var(--fg-2) }
+.cell.election .n { color: var(--fg); font-weight: 700 }
+.eday {
+  display: block; margin-top: 2px; font-size: 8.5px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--fg-2); line-height: 1.3;
+}
 .calempty { padding: 34px 30px; color: var(--fg-3); font-size: 13px; line-height: 1.6 }
 .callegend {
   display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 26px 34px;

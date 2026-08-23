@@ -5,6 +5,7 @@ import {
   PROGRAM_TYPE_ORDER,
   eventDate,
   eventMonths,
+  isElectionDay,
   type ProgramEvent,
   type ProgramType,
 } from '../../data/events'
@@ -54,23 +55,23 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
         </span>
       </div>
 
-      {months.length ? (
-        months.map(({ year, month }) => (
-          <MonthGrid
-            key={`${year}-${month}`}
-            year={year}
-            month={month}
-            byDay={byDay}
-            onOpenState={onOpenState}
-          />
-        ))
-      ) : (
+      {shown.length === 0 && (
         <p className="calempty">
           {EVENTS.length
             ? 'No events match the current filters.'
             : 'Nothing in the event tracker yet. Events added in Airtable appear here after the next sync.'}
         </p>
       )}
+
+      {months.map(({ year, month }) => (
+        <MonthGrid
+          key={`${year}-${month}`}
+          year={year}
+          month={month}
+          byDay={byDay}
+          onOpenState={onOpenState}
+        />
+      ))}
 
       <div className="callegend">
         {PROGRAM_TYPE_ORDER.map((type) => (
@@ -116,9 +117,14 @@ function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
         {Array.from({ length: dayCount }, (_, i) => {
           const day = i + 1
           const events = byDay.get(`${year}-${month}-${day}`) ?? []
+          const election = isElectionDay(year, month, day)
           return (
-            <div className={`cell${events.length ? ' has' : ''}`} key={day}>
+            <div
+              className={`cell${events.length ? ' has' : ''}${election ? ' election' : ''}`}
+              key={day}
+            >
               <span className="n">{day}</span>
+              {election && <span className="eday">Election Day</span>}
               {events.map((e) => (
                 <button
                   key={`${e.state}-${e.title}`}

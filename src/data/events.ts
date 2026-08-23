@@ -64,12 +64,37 @@ for (const list of Object.values(BY_STATE)) {
 export const eventsIn = (abbr: string): ProgramEvent[] => BY_STATE[abbr] ?? []
 
 /**
- * Every distinct `{year, month}` present in the data, ascending. The calendar renders
- * one grid per entry, so adding a November event grows the calendar with no code change.
+ * Election day, and the months the calendar always shows.
+ *
+ * The 2026 general is the first Tuesday after the first Monday in November: the 3rd.
+ * September through November are drawn whether or not anything is scheduled in them, so
+ * the calendar is a plan to fill in rather than a blank that appears broken.
+ */
+export const ELECTION_DAY = { year: 2026, month: 10, day: 3 }
+
+const CYCLE_MONTHS: { year: number; month: number }[] = [
+  { year: 2026, month: 8 },
+  { year: 2026, month: 9 },
+  { year: 2026, month: 10 },
+]
+
+/** True for the one cell that is election day. */
+export const isElectionDay = (year: number, month: number, day: number): boolean =>
+  year === ELECTION_DAY.year && month === ELECTION_DAY.month && day === ELECTION_DAY.day
+
+/**
+ * The months the calendar renders: the cycle months, plus any month an event falls in.
+ * An event outside September–November grows the calendar with no code change.
  */
 export function eventMonths(events: ProgramEvent[]): { year: number; month: number }[] {
   const seen = new Set<string>()
   const out: { year: number; month: number }[] = []
+
+  for (const m of CYCLE_MONTHS) {
+    seen.add(`${m.year}-${m.month}`)
+    out.push(m)
+  }
+
   for (const e of events) {
     const { year, month } = eventDate(e)
     const key = `${year}-${month}`
