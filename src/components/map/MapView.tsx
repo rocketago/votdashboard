@@ -16,14 +16,12 @@ import {
 } from '../../lib/geo'
 import { useElementSize } from '../../hooks/useElementSize'
 import type { TargetFilters } from '../../hooks/useTargetFilters'
-import type { MapLevel } from '../Header'
 import { StripePatterns, stripeFill } from './stripes'
 
 /** States too small to carry a centroid label without colliding with their neighbours. */
 const SMALL = new Set(['RI', 'DE', 'DC', 'CT', 'NJ', 'MD', 'MA', 'NH', 'VT'])
 
 interface Props {
-  level: MapLevel
   targets: TargetFilters
   selected: string | null
   onSelect: (abbr: string) => void
@@ -36,7 +34,7 @@ interface Tip {
   y: number
 }
 
-export function MapView({ level, targets, selected, onSelect, onClose }: Props) {
+export function MapView({ targets, selected, onSelect, onClose }: Props) {
   const [wrapRef, { width, height }] = useElementSize<HTMLDivElement>()
   const [states, setStates] = useState<StateFeature[]>([])
   const [districts, setDistricts] = useState<DistrictFeature[]>([])
@@ -179,7 +177,6 @@ export function MapView({ level, targets, selected, onSelect, onClose }: Props) 
             <NationalLayers
               states={states}
               path={path}
-              level={level}
               selected={selected}
               showChapters={filters.chapter}
               activeTypes={activeTypes}
@@ -222,7 +219,6 @@ type Path = ReturnType<typeof geoPath>
 interface NationalProps {
   states: StateFeature[]
   path: Path
-  level: MapLevel
   selected: string | null
   showChapters: boolean
   activeTypes: (abbr: string) => TargetType[]
@@ -235,7 +231,6 @@ interface NationalProps {
 function NationalLayers({
   states,
   path,
-  level,
   selected,
   showChapters,
   activeTypes,
@@ -313,37 +308,6 @@ function NationalLayers({
         </g>
       )}
 
-      {level === 'districts' && (
-        <g>
-          {states
-            .filter((f) => isVisible(f.abbr) && (STATES[f.abbr]?.districts.length ?? 0) > 0)
-            .map((f) => {
-              const [cx, cy] = path.centroid(f)
-              return (
-                <g key={f.abbr} className="dchip" transform={`translate(${cx},${cy + 14})`}>
-                  <rect
-                    x={-11}
-                    y={-8}
-                    width={22}
-                    height={14}
-                    fill={COLORS.ink}
-                    stroke="rgba(255,255,255,.35)"
-                  />
-                  <text
-                    textAnchor="middle"
-                    y={2.5}
-                    fontFamily="IBM Plex Mono"
-                    fontSize={9.5}
-                    fontWeight={600}
-                    fill="#fff"
-                  >
-                    {STATES[f.abbr]!.districts.length}D
-                  </text>
-                </g>
-              )
-            })}
-        </g>
-      )}
 
     </>
   )

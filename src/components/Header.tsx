@@ -1,24 +1,15 @@
 export type View = 'map' | 'cal'
-export type MapLevel = 'states' | 'districts'
-
 const VIEWS: { key: View; label: string }[] = [
   { key: 'map', label: 'Map' },
   { key: 'cal', label: 'Calendar' },
 ]
 
-const LEVELS: { key: MapLevel; label: string }[] = [
-  { key: 'states', label: 'States' },
-  { key: 'districts', label: 'Districts' },
-]
-
 interface Props {
   view: View
   onView: (view: View) => void
-  level: MapLevel
-  onLevel: (level: MapLevel) => void
 }
 
-export function Header({ view, onView, level, onLevel }: Props) {
+export function Header({ view, onView }: Props) {
   return (
     <header>
       <div className="brand">
@@ -34,14 +25,6 @@ export function Header({ view, onView, level, onLevel }: Props) {
         ))}
       </div>
 
-      {/* The level switch only means anything on the map. */}
-      <div className="levels" style={{ marginLeft: 0, display: view === 'map' ? '' : 'none' }}>
-        {LEVELS.map((l) => (
-          <button key={l.key} aria-pressed={level === l.key} onClick={() => onLevel(l.key)}>
-            {l.label}
-          </button>
-        ))}
-      </div>
     </header>
   )
 }

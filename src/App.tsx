@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 
-import { Header, type MapLevel, type View } from './components/Header'
+import { Header, type View } from './components/Header'
 import { TargetFilters } from './components/TargetFilters'
 import { MapView } from './components/map/MapView'
 import { DetailPanel } from './components/DetailPanel'
@@ -11,7 +11,6 @@ import type { ProgramType } from './data/events'
 
 export function App() {
   const [view, setView] = useState<View>('map')
-  const [level, setLevel] = useState<MapLevel>('states')
   const [selected, setSelected] = useState<string | null>(null)
 
   const targets = useTargetFilters()
@@ -42,12 +41,6 @@ export function App() {
     if (next !== 'map') setSelected(null)
   }, [])
 
-  const changeLevel = useCallback((next: MapLevel) => {
-    setLevel(next)
-    // The level switch only applies to the national board, so back out of a zoom.
-    setSelected(null)
-  }, [])
-
   /** Chips in the calendar and the feed jump to that state on the map. */
   const openState = useCallback((abbr: string) => {
     setView('map')
@@ -63,14 +56,13 @@ export function App() {
 
   return (
     <div className="app">
-      <Header view={view} onView={changeView} level={level} onLevel={changeLevel} />
+      <Header view={view} onView={changeView} />
 
       <main className={mainClass}>
         {view === 'map' && (
           <>
             <TargetFilters {...targets} />
             <MapView
-              level={level}
               targets={targets}
               selected={selected}
               onSelect={setSelected}
