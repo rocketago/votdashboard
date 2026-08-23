@@ -44,6 +44,10 @@ const SOURCE = {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     table: 'States',
   },
+  events: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    table: 'Event Tracker (Org-Wide)',
+  },
 }
 
 /* ---------------- token ---------------- */
@@ -557,6 +561,111 @@ export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
   )
 }
 
+/* ---------------- events ---------------- */
+
+/** Airtable's `Event Type` choices, which match the app's programme types exactly. */
+const EVENT_TYPE = {
+  'Hard In-Person': 'hip',
+  'Hard Distributed': 'hd',
+  'Soft In-Person': 'sip',
+  'Soft Distributed': 'sd',
+}
+
+/**
+ * The calendar day an event falls on, in Eastern time.
+ *
+ * Airtable returns the instant in UTC, and the column is Eastern — so an evening event
+ * would otherwise land on the following day. en-CA formats as YYYY-MM-DD.
+ */
+const EASTERN_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+/**
+ * The state a targeted race belongs to. `Targeted Race` mixes district ids with plain
+ * state names — "OH-09" and "Ohio" are both valid choices — and Alaska's at-large seat
+ * is written AK-AL.
+ */
+function stateOfRace(race) {
+  const text = String(race ?? '').trim()
+  const prefixed = text.match(/^([A-Z]{2})-/)
+  return prefixed ? prefixed[1] : (NAME_TO_ABBR[text] ?? null)
+}
+
+async function syncEvents() {
+  const rows = await allRecords(SOURCE.events.base, SOURCE.events.table)
+  const events = []
+  const problems = []
+
+  for (const record of rows) {
+    const f = record.fields
+
+    // Airtable omits empty fields, so a blank row arrives as {}. Those are placeholders
+    // someone left in the table, not events, and are skipped rather than failed over.
+    if (!Object.keys(f).length) continue
+
+    const title = String(f['Event Name'] ?? '').trim()
+    const type = EVENT_TYPE[String(f['Event Type'] ?? '').trim()]
+    const when = f['Date and Time (ET)']
+    const races = f['Targeted Race'] ?? []
+    const states = [...new Set(races.map(stateOfRace).filter(Boolean))]
+
+    if (!title) problems.push(`${record.id}: no Event Name`)
+    else if (!when) problems.push(`${title}: no Date and Time`)
+    else if (!type) problems.push(`${title}: unrecognised Event Type "${f['Event Type']}"`)
+    else if (!races.length) problems.push(`${title}: no Targeted Race, so no state to file it under`)
+    else if (!states.length)
+      problems.push(`${title}: Targeted Race ${JSON.stringify(races)} names no state`)
+    else {
+      const date = EASTERN_DAY.format(new Date(when))
+      const meta = String(f['Location'] ?? '').trim()
+      // An event targeting races in several states is listed in each, so it shows up
+      // for every organiser it concerns.
+      for (const state of states) events.push({ date, state, title, meta, type })
+    }
+  }
+
+  if (problems.length) fail('event', problems)
+
+  events.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) || a.state.localeCompare(b.state) || a.title.localeCompare(b.title),
+  )
+
+  const rowsOut = events
+    .map(
+      (e) =>
+        `  { date: '${e.date}', state: '${e.state}', title: ${JSON.stringify(e.title)}, ` +
+        `meta: ${JSON.stringify(e.meta)}, type: '${e.type}' },`,
+    )
+    .join('\n')
+
+  const blank = rows.length - new Set(events.map((e) => `${e.date}${e.title}`)).size
+
+  emit(
+    'events.data.ts',
+    HEADER(
+      'the "Event Tracker (Org-Wide)" table in the VOT 2026 Soft Side Reports base',
+      ` * Only the event rows live here; the calendar's types and date helpers are
+ * hand-written in \`events.ts\`, which re-exports this list.
+ *
+ * An event targeting races in more than one state appears once per state, so it reaches
+ * every organiser it concerns. Dates are the Eastern calendar day, matching the column.`,
+    ) +
+      `
+import type { ProgramEvent } from './events'
+
+export const EVENTS: ProgramEvent[] = [
+${rowsOut}
+]
+`,
+    `${events.length} events${blank > 0 ? ` (${rows.length} rows, ${rows.length - events.length} blank or multi-state)` : ''}`,
+  )
+}
+
 /**
  * A row that cannot be mapped would be dropped from a list the dashboard presents as
  * complete, so it is worth stopping over rather than quietly shipping a short one.
@@ -571,3 +680,4 @@ function fail(what, problems) {
 await syncChapters()
 await syncCampuses()
 await syncReports()
+await syncEvents()

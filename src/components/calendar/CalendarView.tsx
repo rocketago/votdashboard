@@ -54,15 +54,23 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
         </span>
       </div>
 
-      {months.map(({ year, month }) => (
-        <MonthGrid
-          key={`${year}-${month}`}
-          year={year}
-          month={month}
-          byDay={byDay}
-          onOpenState={onOpenState}
-        />
-      ))}
+      {months.length ? (
+        months.map(({ year, month }) => (
+          <MonthGrid
+            key={`${year}-${month}`}
+            year={year}
+            month={month}
+            byDay={byDay}
+            onOpenState={onOpenState}
+          />
+        ))
+      ) : (
+        <p className="calempty">
+          {EVENTS.length
+            ? 'No events match the current filters.'
+            : 'Nothing in the event tracker yet. Events added in Airtable appear here after the next sync.'}
+        </p>
+      )}
 
       <div className="callegend">
         {PROGRAM_TYPE_ORDER.map((type) => (
