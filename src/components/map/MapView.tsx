@@ -302,12 +302,19 @@ function NationalLayers({
           .filter((f) => isVisible(f.abbr) && STATES[f.abbr]?.chapter === 'established')
           .map((f) => {
             const [cx, cy] = path.centroid(f)
+
+            // The lift exists to clear the state's label, and the states too short to
+            // absorb it are the ones that carry no label — 13px put Massachusetts'
+            // marker across the border into New Hampshire. So it applies only where
+            // there is a label to clear.
+            const lift = SMALL.has(f.abbr) ? 0 : 13
+
             return (
               <circle
                 key={f.abbr}
                 className="chapdot"
                 cx={cx}
-                cy={cy - 13}
+                cy={cy - lift}
                 r={3.6}
                 fill={COLORS.chapter}
                 stroke="#fff"
