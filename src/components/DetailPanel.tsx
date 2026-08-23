@@ -112,9 +112,16 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
           </button>
         </div>
         <div className="tags">
-          {record.types.map((type) => (
-            <span key={type} className="tag on" style={{ background: TIER[type].color }}>
-              {TIER[type].label}
+          {record.targets.map((target) => (
+            <span
+              key={target.id}
+              className="tag on"
+              // The target's own dominant type, which can differ from the state's — a
+              // Hard-only race in a state that is also Soft, say.
+              style={{ background: TIER[target.types[0]!].color }}
+              title={target.types.map((t) => TIER[t].label).join(' + ')}
+            >
+              {targetLabel(target)}
             </span>
           ))}
         </div>
@@ -183,28 +190,6 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
           <button className="more" onClick={() => setExpanded(!expanded)}>
             {expanded ? 'Show fewer' : `Show all ${events.length}`}
           </button>
-        )}
-      </div>
-
-      <div className="psec">
-        <h4>Targets · {record.targets.length}</h4>
-        {record.targets.length ? (
-          <div className="chips">
-            {record.targets.map((target) => (
-              <span
-                className="chip"
-                key={target.id}
-                // Left edge carries the target's own dominant type, which can differ
-                // from the state's — a Hard-only race in a Soft + Hard state, say.
-                style={{ borderLeft: `3px solid ${TIER[target.types[0]!].color}` }}
-                title={target.types.map((t) => TIER[t].label).join(' + ')}
-              >
-                {targetLabel(target)}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="empty">No races targeted.</p>
         )}
       </div>
 
