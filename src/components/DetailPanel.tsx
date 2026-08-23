@@ -190,7 +190,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
             {campuses.map((c) => (
               <div className="p" key={c.name}>
                 <b>{c.name}</b>
-                <span>{c.hasChapter ? 'chapter' : 'prospect'}</span>
+                <span>unconfirmed</span>
               </div>
             ))}
           </div>

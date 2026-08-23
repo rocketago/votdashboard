@@ -349,12 +349,11 @@ function NationalLayers({
                 key={c.name}
                 className="campus"
                 transform={`translate(${point[0]},${point[1]})`}
-                onMouseMove={(e) => onTip(e, `${c.name}${c.hasChapter ? ' · chapter' : ' · no chapter'}`)}
+                onMouseMove={(e) => onTip(e, c.name)}
                 onMouseLeave={onTipOut}
                 onClick={() => onSelect(c.state)}
               >
                 <circle r={5.5} fill={TIER[campusType(c)].color} stroke={COLORS.ink} strokeWidth={1.4} />
-                {c.hasChapter && <circle r={2} fill={COLORS.ink} />}
               </g>
             )
           })}
@@ -462,13 +461,12 @@ function StateLayers({
               key={c.name}
               className="campus"
               transform={`translate(${point[0]},${point[1]})`}
-              onMouseMove={(e) => onTip(e, `${c.name}${c.hasChapter ? ' · chapter' : ' · prospect'}`)}
+              onMouseMove={(e) => onTip(e, c.name)}
               onMouseLeave={onTipOut}
             >
               <circle
                 r={5}
                 fill={COLORS.chapter}
-                fillOpacity={c.hasChapter ? 1 : 0.2}
                 stroke={COLORS.chapter}
                 strokeWidth={1.4}
               />
