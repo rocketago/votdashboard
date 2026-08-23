@@ -15,7 +15,7 @@
  * root (which .gitignore excludes). It needs `schema.bases:read` to inspect and
  * `data.records:read` to sync, scoped to the one base.
  */
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -29,12 +29,20 @@ function loadEnvFile() {
   const path = resolve(ROOT, '.env')
   if (!existsSync(path)) return
 
+  const parsed = {}
   for (const line of readFileSync(path, 'utf8').split('\n')) {
     const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/i)
     if (!match) continue
-    const value = match[2].replace(/^["']|["']$/g, '')
-    process.env[match[1]] ??= value
+
+    const value = match[2].replace(/^["']|["']$/g, '').trim()
+    // An empty entry means unset, not "": .env starts as a copy of .env.example with
+    // only some blanks filled in. A later line overrides an earlier one, as dotenv
+    // does, so appending to the file works the way people expect.
+    if (value) parsed[match[1]] = value
   }
+
+  // The real environment still wins, so CI can override the file without editing it.
+  for (const [k, v] of Object.entries(parsed)) process.env[k] ??= v
 }
 
 loadEnvFile()
@@ -201,8 +209,130 @@ if (has('dump')) {
   process.exit(0)
 }
 
-console.error(
-  '\nNothing to write yet — the mapping from these fields onto src/data/ is not set up.\n' +
-    'Run with --dump to print the field names, then wire the mapping.',
-)
-process.exit(1)
+/* ---------------- mapping ---------------- */
+
+/**
+ * Airtable stores the location as a full state name. Both "DC" and "District of
+ * Columbia" are in use for the same place, and at least one value carries a trailing
+ * space, so names are trimmed before lookup.
+ */
+const NAME_TO_ABBR = {
+  Alabama: 'AL', Alaska: 'AK', Arizona: 'AZ', Arkansas: 'AR', California: 'CA',
+  Colorado: 'CO', Connecticut: 'CT', Delaware: 'DE', Florida: 'FL', Georgia: 'GA',
+  Hawaii: 'HI', Idaho: 'ID', Illinois: 'IL', Indiana: 'IN', Iowa: 'IA',
+  Kansas: 'KS', Kentucky: 'KY', Louisiana: 'LA', Maine: 'ME', Maryland: 'MD',
+  Massachusetts: 'MA', Michigan: 'MI', Minnesota: 'MN', Mississippi: 'MS',
+  Missouri: 'MO', Montana: 'MT', Nebraska: 'NE', Nevada: 'NV',
+  'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+  'North Carolina': 'NC', 'North Dakota': 'ND', Ohio: 'OH', Oklahoma: 'OK',
+  Oregon: 'OR', Pennsylvania: 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+  'South Dakota': 'SD', Tennessee: 'TN', Texas: 'TX', Utah: 'UT', Vermont: 'VT',
+  Virginia: 'VA', Washington: 'WA', 'West Virginia': 'WV', Wisconsin: 'WI',
+  Wyoming: 'WY', 'District of Columbia': 'DC', DC: 'DC',
+}
+
+/** Airtable's `Chapter Type`. Only colleges are filed as Campus. */
+const KIND = { Campus: 'campus', Community: 'community' }
+
+/** Airtable's `Campus Type` — what the chapter is attached to. */
+const SETTING = {
+  College: 'college',
+  'High School': 'high-school',
+  Community: 'community',
+  State: 'state',
+}
+
+const chapters = []
+const problems = []
+
+for (const record of records) {
+  const f = record.fields
+  const name = String(f['Name'] ?? '').trim()
+  const rawState = String(f['State or Territory'] ?? '').trim()
+  const abbr = NAME_TO_ABBR[rawState]
+  const kind = KIND[String(f['Chapter Type'] ?? '').trim()]
+  const setting = SETTING[String(f['Campus Type'] ?? '').trim()]
+
+  if (!name) problems.push(`${record.id}: no Name`)
+  else if (!abbr) problems.push(`${name}: unrecognised State or Territory "${rawState}"`)
+  else if (!kind) problems.push(`${name}: unrecognised Chapter Type "${f['Chapter Type']}"`)
+  else if (!setting) problems.push(`${name}: unrecognised Campus Type "${f['Campus Type']}"`)
+  else chapters.push({ name, state: abbr, kind, setting })
+}
+
+// A row that cannot be mapped is dropped from a roster the dashboard presents as
+// complete, so it is worth stopping over rather than quietly shipping a short list.
+if (problems.length) {
+  console.error(`\n${problems.length} record(s) could not be mapped:\n`)
+  for (const p of problems) console.error(`  ${p}`)
+  console.error('\nFix them in Airtable, or extend the tables in this script.')
+  process.exit(1)
+}
+
+chapters.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name))
+
+const byState = new Map()
+for (const c of chapters) byState.set(c.state, (byState.get(c.state) ?? 0) + 1)
+
+const rows = chapters
+  .map(
+    (c) =>
+      `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
+      `kind: '${c.kind}', setting: '${c.setting}' },`,
+  )
+  .join('\n')
+
+// No timestamp in the header: re-running with unchanged data should produce an
+// identical file, so the diff shows what actually moved rather than that it ran.
+const out = `/**
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by \`scripts/sync-chapters.mjs\` from the "Chapter Management" table in the
+ * VOT Chapters Airtable base. Re-run \`npm run chapters\` to refresh it.
+ *
+ * This is the real chapter roster, unlike most of \`src/data/\`. Chapter status and
+ * counts in \`states.ts\` are derived from it rather than hand-set.
+ *
+ * Airtable carries no coordinates for these — \`Campus Zip\` is populated on a handful
+ * of records — so chapters are listed, not mapped. The campus pins on the map still
+ * come from the placeholder list in \`campuses.ts\`.
+ */
+
+/** Airtable's \`Chapter Type\`. Only colleges are filed as Campus. */
+export type ChapterKind = 'campus' | 'community'
+
+/** Airtable's \`Campus Type\` — what the chapter is attached to. */
+export type ChapterSetting = 'college' | 'high-school' | 'community' | 'state'
+
+export interface Chapter {
+  name: string
+  /** USPS abbreviation of the state the chapter is in. */
+  state: string
+  kind: ChapterKind
+  setting: ChapterSetting
+}
+
+export const CHAPTERS: Chapter[] = [
+${rows}
+]
+
+const BY_STATE = CHAPTERS.reduce<Record<string, Chapter[]>>((acc, c) => {
+  ;(acc[c.state] ??= []).push(c)
+  return acc
+}, {})
+
+/** Every chapter in a state, alphabetically. Empty where there are none. */
+export const chaptersIn = (abbr: string): Chapter[] => BY_STATE[abbr] ?? []
+
+/** How a chapter's setting reads in the UI. */
+export const SETTING_LABEL: Record<ChapterSetting, string> = {
+  college: 'college',
+  'high-school': 'high school',
+  community: 'community',
+  state: 'statewide',
+}
+`
+
+writeFileSync(resolve(ROOT, 'src/data/chapters.ts'), out)
+
+console.log(`${chapters.length} chapters across ${byState.size} states -> src/data/chapters.ts`)

@@ -8,6 +8,9 @@
  * When the real numbers arrive, delete this file and put the measured values
  * straight onto the records in `src/data/states.ts`; `StateRecord` already carries
  * the fields, so nothing downstream has to change.
+ *
+ * The chapter count used to be generated here too. It no longer is — it comes from
+ * `src/data/chapters.ts`, which is synced from Airtable.
  */
 
 /**
@@ -55,15 +58,12 @@ export interface DerivedMetrics {
   pgoal: number
   /** Trained volunteers. */
   vol: number
-  /** Active chartered chapters. */
-  chapters: number
 }
 
 export function deriveMetrics(
   abbr: string,
   scaleTier: ScaleTier,
   chapter: ChapterStatus,
-  hasHardTarget: boolean,
 ): DerivedMetrics {
   const r = unit(abbr)
   const r2 = unit(abbr + 'p')
@@ -81,6 +81,5 @@ export function deriveMetrics(
     pledge,
     pgoal,
     vol: Math.round(30 + r2 * 260),
-    chapters: chapter === 'none' ? 0 : 1 + Math.round(r * (hasHardTarget ? 7 : 3)),
   }
 }

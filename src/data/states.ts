@@ -6,6 +6,7 @@ import {
   targetsIn,
   type Target,
 } from './targets'
+import { chaptersIn } from './chapters'
 import {
   deriveMetrics,
   type ChapterStatus,
@@ -21,11 +22,11 @@ import {
  * come off the board, so their chapter and partner history is not lost; a state only
  * reappears on the map when a target is added back for it.
  *
- * PLACEHOLDER DATA: chapter statuses and partner lists were assigned during design and
- * have not been confirmed.
+ * PLACEHOLDER DATA: partner lists were assigned during design and have not been
+ * confirmed. Chapter status is no longer here — it is derived from the real roster in
+ * `chapters.ts`, so a state reads as having a chapter only if Airtable says so.
  */
 export interface StateSource {
-  chapter: ChapterStatus
   partners: string[]
   /**
    * Legacy single-tier classification, kept only to scale the placeholder metrics (see
@@ -36,47 +37,47 @@ export interface StateSource {
 }
 
 export const STATE_SOURCE: Record<string, StateSource> = {
-  AZ: { chapter: 'established', scaleTier: 'priority', partners: ['Arizona Youth Vote', 'Chispa AZ'] },
-  GA: { chapter: 'established', scaleTier: 'priority', partners: ['New Georgia Project', 'Georgia Shift'] },
-  MI: { chapter: 'established', scaleTier: 'priority', partners: ['MI Student Power', 'Detroit Action'] },
-  NC: { chapter: 'established', scaleTier: 'priority', partners: ['NC Black Alliance', 'Down Home NC'] },
-  NV: { chapter: 'established', scaleTier: 'priority', partners: ['Silver State Voices'] },
-  PA: { chapter: 'established', scaleTier: 'priority', partners: ['PA Youth Vote', 'Make the Road PA'] },
-  WI: { chapter: 'established', scaleTier: 'priority', partners: ['WI Youth Power', 'BLOC'] },
-  TX: { chapter: 'established', scaleTier: 'priority', partners: ['MOVE Texas', 'Jolt Initiative'] },
+  AZ: { scaleTier: 'priority', partners: ['Arizona Youth Vote', 'Chispa AZ'] },
+  GA: { scaleTier: 'priority', partners: ['New Georgia Project', 'Georgia Shift'] },
+  MI: { scaleTier: 'priority', partners: ['MI Student Power', 'Detroit Action'] },
+  NC: { scaleTier: 'priority', partners: ['NC Black Alliance', 'Down Home NC'] },
+  NV: { scaleTier: 'priority', partners: ['Silver State Voices'] },
+  PA: { scaleTier: 'priority', partners: ['PA Youth Vote', 'Make the Road PA'] },
+  WI: { scaleTier: 'priority', partners: ['WI Youth Power', 'BLOC'] },
+  TX: { scaleTier: 'priority', partners: ['MOVE Texas', 'Jolt Initiative'] },
 
-  FL: { chapter: 'established', scaleTier: 'soft', partners: ['Florida Rising', 'Dream Defenders'] },
-  OH: { chapter: 'established', scaleTier: 'soft', partners: ['Ohio Student Assoc.'] },
-  VA: { chapter: 'established', scaleTier: 'soft', partners: ['New Virginia Majority'] },
-  MN: { chapter: 'established', scaleTier: 'soft', partners: ['MN Youth Collective'] },
-  CO: { chapter: 'established', scaleTier: 'soft', partners: ['New Era Colorado'] },
-  NH: { chapter: 'building', scaleTier: 'soft', partners: ['NH Youth Movement'] },
-  NM: { chapter: 'building', scaleTier: 'soft', partners: ['NM Native Vote'] },
-  IA: { chapter: 'building', scaleTier: 'soft', partners: [] },
-  ME: { chapter: 'building', scaleTier: 'soft', partners: ['Maine Youth Action'] },
+  FL: { scaleTier: 'soft', partners: ['Florida Rising', 'Dream Defenders'] },
+  OH: { scaleTier: 'soft', partners: ['Ohio Student Assoc.'] },
+  VA: { scaleTier: 'soft', partners: ['New Virginia Majority'] },
+  MN: { scaleTier: 'soft', partners: ['MN Youth Collective'] },
+  CO: { scaleTier: 'soft', partners: ['New Era Colorado'] },
+  NH: { scaleTier: 'soft', partners: ['NH Youth Movement'] },
+  NM: { scaleTier: 'soft', partners: ['NM Native Vote'] },
+  IA: { scaleTier: 'soft', partners: [] },
+  ME: { scaleTier: 'soft', partners: ['Maine Youth Action'] },
 
-  CA: { chapter: 'established', scaleTier: 'nice', partners: ['CA Calls', 'Power CA Action'] },
-  NJ: { chapter: 'established', scaleTier: 'nice', partners: ['NJ Youth Power'] },
-  NY: { chapter: 'established', scaleTier: 'nice', partners: ['NY Youth Agenda'] },
-  IL: { chapter: 'established', scaleTier: 'nice', partners: ['Chicago Votes'] },
-  WA: { chapter: 'established', scaleTier: 'nice', partners: ['WA Youth Alliance'] },
-  MA: { chapter: 'established', scaleTier: 'nice', partners: ['MassVOTE'] },
-  OR: { chapter: 'established', scaleTier: 'nice', partners: ['Next Up Action'] },
-  MD: { chapter: 'established', scaleTier: 'nice', partners: [] },
-  MO: { chapter: 'building', scaleTier: 'nice', partners: [] },
-  TN: { chapter: 'building', scaleTier: 'nice', partners: ['The Equity Alliance'] },
-  UT: { chapter: 'building', scaleTier: 'nice', partners: [] },
-  CT: { chapter: 'building', scaleTier: 'nice', partners: [] },
-  KS: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  IN: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  MT: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  AK: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  SC: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  LA: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  KY: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  NE: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  OK: { chapter: 'none', scaleTier: 'nice', partners: [] },
-  AL: { chapter: 'none', scaleTier: 'nice', partners: [] },
+  CA: { scaleTier: 'nice', partners: ['CA Calls', 'Power CA Action'] },
+  NJ: { scaleTier: 'nice', partners: ['NJ Youth Power'] },
+  NY: { scaleTier: 'nice', partners: ['NY Youth Agenda'] },
+  IL: { scaleTier: 'nice', partners: ['Chicago Votes'] },
+  WA: { scaleTier: 'nice', partners: ['WA Youth Alliance'] },
+  MA: { scaleTier: 'nice', partners: ['MassVOTE'] },
+  OR: { scaleTier: 'nice', partners: ['Next Up Action'] },
+  MD: { scaleTier: 'nice', partners: [] },
+  MO: { scaleTier: 'nice', partners: [] },
+  TN: { scaleTier: 'nice', partners: ['The Equity Alliance'] },
+  UT: { scaleTier: 'nice', partners: [] },
+  CT: { scaleTier: 'nice', partners: [] },
+  KS: { scaleTier: 'nice', partners: [] },
+  IN: { scaleTier: 'nice', partners: [] },
+  MT: { scaleTier: 'nice', partners: [] },
+  AK: { scaleTier: 'nice', partners: [] },
+  SC: { scaleTier: 'nice', partners: [] },
+  LA: { scaleTier: 'nice', partners: [] },
+  KY: { scaleTier: 'nice', partners: [] },
+  NE: { scaleTier: 'nice', partners: [] },
+  OK: { scaleTier: 'nice', partners: [] },
+  AL: { scaleTier: 'nice', partners: [] },
 }
 
 export interface StateRecord extends DerivedMetrics {
@@ -91,6 +92,8 @@ export interface StateRecord extends DerivedMetrics {
   /** Target House districts as full ids, e.g. `['OH-01','OH-09','OH-13']`. */
   districts: string[]
   chapter: ChapterStatus
+  /** Chartered chapters in the state, from the Airtable roster. */
+  chapters: number
   partners: string[]
 }
 
@@ -116,8 +119,14 @@ export const STATE_NAME: Record<string, string> = {
  */
 export const STATES: Record<string, StateRecord> = Object.fromEntries(
   TARGET_STATES.map((abbr) => {
-    const source = STATE_SOURCE[abbr] ?? { chapter: 'none', partners: [], scaleTier: 'nice' }
+    const source = STATE_SOURCE[abbr] ?? { partners: [], scaleTier: 'nice' }
     const types = stateTargetTypes(abbr)
+
+    // Real data, from Airtable. Airtable records chapters that exist, so there is no
+    // equivalent of the old hand-set 'building' status — a state either has chapters
+    // or it does not.
+    const chapters = chaptersIn(abbr)
+    const chapter: ChapterStatus = chapters.length ? 'established' : 'none'
 
     return [
       abbr,
@@ -128,9 +137,10 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
         tier: types[0]!,
         targets: targetsIn(abbr),
         districts: targetDistrictsIn(abbr),
-        chapter: source.chapter,
+        chapter,
+        chapters: chapters.length,
         partners: source.partners,
-        ...deriveMetrics(abbr, source.scaleTier, source.chapter, types.includes('hard')),
+        ...deriveMetrics(abbr, source.scaleTier, chapter),
       } satisfies StateRecord,
     ]
   }),

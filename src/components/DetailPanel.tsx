@@ -1,6 +1,6 @@
 import { CHAPTER_STATUS, STATE_NAME, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
-import { campusesIn } from '../data/campuses'
+import { SETTING_LABEL, chaptersIn } from '../data/chapters'
 import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
 import { targetLabel } from '../data/targets'
 
@@ -45,7 +45,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
 
   const chapter = CHAPTER_STATUS[record.chapter]
   const events = eventsIn(abbr)
-  const campuses = campusesIn(abbr)
+  const chapters = chaptersIn(abbr)
   const tierColor = TIER[record.tier].color
 
   return (
@@ -56,8 +56,8 @@ export function DetailPanel({ abbr, onClose }: Props) {
             <h2>{record.name}</h2>
             <div className="abbr">
               {abbr} · {record.targets.length} target race
-              {record.targets.length === 1 ? '' : 's'} · {campuses.length} campus
-              {campuses.length === 1 ? '' : 'es'}
+              {record.targets.length === 1 ? '' : 's'} · {chapters.length} chapter
+              {chapters.length === 1 ? '' : 's'}
             </div>
           </div>
           <button className="close" onClick={onClose}>
@@ -166,18 +166,18 @@ export function DetailPanel({ abbr, onClose }: Props) {
       </div>
 
       <div className="psec">
-        <h4>Campus programs</h4>
-        {campuses.length ? (
+        <h4>Chapters · {chapters.length}</h4>
+        {chapters.length ? (
           <div className="plist">
-            {campuses.map((c) => (
+            {chapters.map((c) => (
               <div className="p" key={c.name}>
                 <b>{c.name}</b>
-                <span>{c.hasChapter ? 'chapter' : 'prospect'}</span>
+                <span>{SETTING_LABEL[c.setting]}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="empty">No campus program yet.</p>
+          <p className="empty">No chartered chapter here yet.</p>
         )}
       </div>
 
