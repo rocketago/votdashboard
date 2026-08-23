@@ -498,6 +498,35 @@ export const SETTING_LABEL: Record<ChapterSetting, string> = {
 
 /* ---------------- campuses ---------------- */
 
+/**
+ * Where each fellowship campus sits.
+ *
+ * Airtable records a campus by name alone, so these are geocoded against OpenStreetMap
+ * and recorded here, as the chapter ZIPs are. Every one was checked to fall inside the
+ * district Airtable links it to, using the boundaries in public/geo — which is a
+ * stronger check than the state, and the reason two errors did not ship:
+ *
+ *   - "Lynchburg University" resolved to Virginia University of Lynchburg, a different
+ *     institution three kilometres away. It is the University of Lynchburg, formerly
+ *     Lynchburg College.
+ *   - "Saint Ambrose University" did not resolve at all until spelled St Ambrose.
+ *
+ * A campus with no entry is listed but not drawn, rather than stopping the sync: the
+ * fellowship list will grow, and a missing pin should not block a build.
+ */
+const CAMPUS_PLACE = {
+  'Grand View University': [41.6198, -93.5988],
+  'Drake University': [41.6031, -93.6553],
+  'Saint Ambrose University': [41.5398, -90.5812],
+  'University of Iowa': [41.6311, -91.5408],
+  'Longwood University': [37.309, -78.4017],
+  'University of Virginia': [38.0411, -78.5055],
+  'Liberty University': [37.3539, -79.1532],
+  'Virginia University of Lynchburg': [37.3951, -79.1528],
+  'Lynchburg University': [37.3987, -79.184],
+  'Randolph College': [37.4393, -79.1709],
+}
+
 async function syncCampuses() {
   const { base, table, districts: districtTable } = SOURCE.campuses
   const [rows, districtRows] = await Promise.all([
@@ -527,7 +556,7 @@ async function syncCampuses() {
     else if (!district) problems.push(`${name}: district link resolves to nothing`)
     else if (!/^[A-Z]{2}-\d{2}$/.test(district))
       problems.push(`${name}: district "${district}" is not a two-letter state and number`)
-    else campuses.push({ name, district, state: district.slice(0, 2) })
+    else campuses.push({ name, district, state: district.slice(0, 2), at: CAMPUS_PLACE[name] })
   }
 
   if (problems.length) fail('campuses', problems)
@@ -538,7 +567,8 @@ async function syncCampuses() {
     .map(
       (c) =>
         `  { name: ${JSON.stringify(c.name)}, state: '${c.state}', ` +
-        `district: '${c.district}' },`,
+        `district: '${c.district}'` +
+        `${c.at ? `, lat: ${c.at[0]}, lon: ${c.at[1]}` : ''} },`,
     )
     .join('\n')
 
@@ -550,9 +580,8 @@ async function syncCampuses() {
  * Airtable, and the district name is where the state comes from — the table itself has
  * no state column.
  *
- * There are no coordinates: Airtable records a campus by name only. \`lat\`/\`lon\` are
- * therefore optional and currently unset on every record, and the map skips any campus
- * without them. Adding those two fields in Airtable is what would put these on the map.`,
+ * Airtable records a campus by name only, so coordinates are geocoded in the sync script
+ * rather than stored here. A campus it has no entry for is listed but not drawn.`,
     ) +
       `
 import { STATES } from './states'
@@ -606,7 +635,8 @@ export const campusesIn = (abbr: string): Campus[] => BY_STATE[abbr] ?? []
 export const mappableCampusesIn = (abbr: string): MappedCampus[] =>
   campusesIn(abbr).filter(hasCoords)
 `,
-    `${campuses.length} campuses across ${new Set(campuses.map((c) => c.district)).size} districts`,
+    `${campuses.length} campuses across ${new Set(campuses.map((c) => c.district)).size} districts` +
+      `, ${campuses.filter((c) => c.at).length} placed`,
   )
 }
 

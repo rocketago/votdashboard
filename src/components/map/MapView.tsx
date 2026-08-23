@@ -450,27 +450,13 @@ function StateLayers({
               key={c.name}
               className="campus"
               transform={`translate(${point[0]},${point[1]})`}
-              onMouseMove={(e) => onTip(e, c.name)}
+              onMouseMove={(e) => onTip(e, `${c.name} · fellowship campus`)}
               onMouseLeave={onTipOut}
             >
-              <circle
-                r={5}
-                fill={COLORS.campus}
-                stroke={COLORS.campus}
-                strokeWidth={1.4}
-              />
-              <text
-                x={9}
-                y={3.5}
-                fontSize={10.5}
-                fontFamily="IBM Plex Sans"
-                fill="rgba(255,255,255,.82)"
-                paintOrder="stroke"
-                stroke="rgba(13,16,22,.8)"
-                strokeWidth={3}
-              >
-                {c.name}
-              </text>
+              {/* No label. Four of these sit within a few kilometres of each other in
+                  Lynchburg, where the labels pile into an unreadable block; the name is
+                  on hover, as it is for the chapter markers. */}
+              <circle r={5} fill={COLORS.campus} stroke={COLORS.ink} strokeWidth={1.4} />
             </g>
           )
         })}

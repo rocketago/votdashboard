@@ -8,9 +8,8 @@
  * Airtable, and the district name is where the state comes from — the table itself has
  * no state column.
  *
- * There are no coordinates: Airtable records a campus by name only. `lat`/`lon` are
- * therefore optional and currently unset on every record, and the map skips any campus
- * without them. Adding those two fields in Airtable is what would put these on the map.
+ * Airtable records a campus by name only, so coordinates are geocoded in the sync script
+ * rather than stored here. A campus it has no entry for is listed but not drawn.
  */
 
 import { STATES } from './states'
@@ -33,16 +32,16 @@ export interface Campus {
 }
 
 export const CAMPUSES: Campus[] = [
-  { name: "Saint Ambrose University", state: 'IA', district: 'IA-01' },
-  { name: "University of Iowa", state: 'IA', district: 'IA-01' },
-  { name: "Drake University", state: 'IA', district: 'IA-03' },
-  { name: "Grand View University", state: 'IA', district: 'IA-03' },
-  { name: "Liberty University", state: 'VA', district: 'VA-05' },
-  { name: "Longwood University", state: 'VA', district: 'VA-05' },
-  { name: "Lynchburg University", state: 'VA', district: 'VA-05' },
-  { name: "Randolph College", state: 'VA', district: 'VA-05' },
-  { name: "University of Virginia", state: 'VA', district: 'VA-05' },
-  { name: "Virginia University of Lynchburg", state: 'VA', district: 'VA-05' },
+  { name: "Saint Ambrose University", state: 'IA', district: 'IA-01', lat: 41.5398, lon: -90.5812 },
+  { name: "University of Iowa", state: 'IA', district: 'IA-01', lat: 41.6311, lon: -91.5408 },
+  { name: "Drake University", state: 'IA', district: 'IA-03', lat: 41.6031, lon: -93.6553 },
+  { name: "Grand View University", state: 'IA', district: 'IA-03', lat: 41.6198, lon: -93.5988 },
+  { name: "Liberty University", state: 'VA', district: 'VA-05', lat: 37.3539, lon: -79.1532 },
+  { name: "Longwood University", state: 'VA', district: 'VA-05', lat: 37.309, lon: -78.4017 },
+  { name: "Lynchburg University", state: 'VA', district: 'VA-05', lat: 37.3987, lon: -79.184 },
+  { name: "Randolph College", state: 'VA', district: 'VA-05', lat: 37.4393, lon: -79.1709 },
+  { name: "University of Virginia", state: 'VA', district: 'VA-05', lat: 38.0411, lon: -78.5055 },
+  { name: "Virginia University of Lynchburg", state: 'VA', district: 'VA-05', lat: 37.3951, lon: -79.1528 },
 ]
 
 /**
