@@ -471,52 +471,64 @@ function StateLayers({
 
       {/* Chapters. A community chapter covers a city or a region, so it is drawn as that
           area; a campus is a point. Statewide chapters cover the state already on screen
-          and are listed in the panel instead. */}
+          and are listed in the panel instead.
+
+          Areas are drawn first so the pins sit on top of them. Otherwise a campus inside
+          a city — Cerritos College inside Los Angeles — is covered by that city's circle
+          whenever the city sorts later by name, and the circle answers the hover. */}
       <g>
-        {chapters.map((c) => {
-          const point = projection([c.lon, c.lat])
-          if (!point) return null
-
-          const label = `${c.name} · ${SETTING_LABEL[c.setting]} chapter`
-
-          if (c.radius) {
+        {chapters
+          .filter((c) => c.radius)
+          .map((c) => {
+            const point = projection([c.lon, c.lat])
             // The radius is in degrees of latitude, so it has to be measured through the
             // projection rather than scaled — the state view is fitted, not fixed.
-            const edge = projection([c.lon, c.lat + c.radius])
-            const r = edge ? Math.hypot(edge[0] - point[0], edge[1] - point[1]) : 0
+            const edge = projection([c.lon, c.lat + c.radius!])
+            if (!point || !edge) return null
+
             return (
               <circle
                 key={`area-${c.name}`}
                 className="chaparea hit"
                 cx={point[0]}
                 cy={point[1]}
-                r={r}
+                r={Math.hypot(edge[0] - point[0], edge[1] - point[1])}
                 fill={COLORS.chapter}
                 fillOpacity={0.16}
                 stroke={COLORS.chapter}
                 strokeWidth={1.4}
                 strokeOpacity={0.75}
-                onMouseMove={(e) => onTip(e, label)}
+                onMouseMove={(e) =>
+                  onTip(e, `${c.name} · ${SETTING_LABEL[c.setting]} chapter`)
+                }
                 onMouseLeave={onTipOut}
               />
             )
-          }
+          })}
 
-          return (
-            <circle
-              key={`${c.setting}-${c.name}`}
-              className="chapdot hit"
-              cx={point[0]}
-              cy={point[1]}
-              r={5}
-              fill={COLORS.chapter}
-              stroke="#fff"
-              strokeWidth={1.6}
-              onMouseMove={(e) => onTip(e, label)}
-              onMouseLeave={onTipOut}
-            />
-          )
-        })}
+        {chapters
+          .filter((c) => !c.radius)
+          .map((c) => {
+            const point = projection([c.lon, c.lat])
+            if (!point) return null
+
+            return (
+              <circle
+                key={`${c.setting}-${c.name}`}
+                className="chapdot hit"
+                cx={point[0]}
+                cy={point[1]}
+                r={5}
+                fill={COLORS.chapter}
+                stroke="#fff"
+                strokeWidth={1.6}
+                onMouseMove={(e) =>
+                  onTip(e, `${c.name} · ${SETTING_LABEL[c.setting]} chapter`)
+                }
+                onMouseLeave={onTipOut}
+              />
+            )
+          })}
       </g>
     </>
   )
