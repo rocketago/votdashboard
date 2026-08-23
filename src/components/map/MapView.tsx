@@ -3,7 +3,7 @@ import { geoAlbersUsa, geoConicConformal, geoPath } from 'd3-geo'
 import type { FeatureCollection, Geometry } from 'geojson'
 
 import { COLORS, TIER, type TargetType } from '../../data/tiers'
-import { placedChaptersIn } from '../../data/chapters'
+import { SETTING_LABEL, placedChaptersIn } from '../../data/chapters'
 import { mappableCampusesIn } from '../../data/campuses'
 import { STATES, districtNumber } from '../../data/states'
 import { targetsIn } from '../../data/targets'
@@ -460,13 +460,15 @@ function StateLayers({
           return (
             <circle
               key={`${c.setting}-${c.name}`}
-              className="chapdot"
+              className="chapdot hit"
               cx={point[0]}
               cy={point[1]}
               r={5}
               fill={COLORS.chapter}
               stroke="#fff"
               strokeWidth={1.6}
+              onMouseMove={(e) => onTip(e, `${c.name} · ${SETTING_LABEL[c.setting]} chapter`)}
+              onMouseLeave={onTipOut}
             />
           )
         })}
