@@ -5,7 +5,6 @@ import type { FeatureCollection, Geometry } from 'geojson'
 import { COLORS, TIER, type TargetType } from '../../data/tiers'
 import { STATES, districtNumber } from '../../data/states'
 import { MAPPABLE_CAMPUSES, campusType, mappableCampusesIn } from '../../data/campuses'
-import { eventsIn } from '../../data/events'
 import {
   cachedDistricts,
   loadDistrictManifest,
@@ -560,7 +559,7 @@ function StateOverlay({
 /* ---------------- running totals ---------------- */
 
 function StatsBar({ visibleStates }: { visibleStates: string[] }) {
-  const sum = (key: 'reg' | 'pledge') =>
+  const sum = (key: 'reg' | 'pledge' | 'students') =>
     visibleStates.reduce((total, abbr) => total + (STATES[abbr]?.[key] ?? 0), 0)
 
   const cells: [string, string | number][] = [
@@ -568,7 +567,7 @@ function StatsBar({ visibleStates }: { visibleStates: string[] }) {
     ['Voters registered', sum('reg').toLocaleString()],
     ['Pledges to vote', sum('pledge').toLocaleString()],
     ['Chapters', visibleStates.filter((a) => STATES[a]?.chapter === 'established').length],
-    ['Events scheduled', visibleStates.reduce((n, a) => n + eventsIn(a).length, 0)],
+    ['Students engaged', sum('students').toLocaleString()],
   ]
 
   return (

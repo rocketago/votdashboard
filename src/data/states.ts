@@ -7,6 +7,7 @@ import {
   type Target,
 } from './targets'
 import { chaptersIn } from './chapters'
+import { reportFor } from './reports'
 import {
   deriveMetrics,
   type ChapterStatus,
@@ -94,6 +95,12 @@ export interface StateRecord extends DerivedMetrics {
   chapter: ChapterStatus
   /** Chartered chapters in the state, from the Airtable roster. */
   chapters: number
+  /** Voter registrations reported to date. */
+  reg: number
+  /** Pledges to vote reported to date. */
+  pledge: number
+  /** Students engaged, reported to date. */
+  students: number
   partners: string[]
 }
 
@@ -139,6 +146,7 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
         districts: targetDistrictsIn(abbr),
         chapter,
         chapters: chapters.length,
+        ...reportFor(abbr),
         partners: source.partners,
         ...deriveMetrics(abbr, source.scaleTier, chapter),
       } satisfies StateRecord,

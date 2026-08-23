@@ -40,6 +40,10 @@ const SOURCE = {
     table: 'Campuses',
     districts: 'Districts',
   },
+  reports: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    table: 'States',
+  },
 }
 
 /* ---------------- token ---------------- */
@@ -476,6 +480,83 @@ export const mappableCampusesIn = (abbr: string): MappedCampus[] =>
   )
 }
 
+/* ---------------- reported totals ---------------- */
+
+/**
+ * What each state has actually reported, rolled up in Airtable from the chapter and
+ * fellow report tables. `Total Voter Reg` and friends are formulas summing the chapter
+ * and fellow halves, so this reads the totals rather than re-adding them here.
+ */
+async function syncReports() {
+  const rows = await allRecords(SOURCE.reports.base, SOURCE.reports.table)
+  const reports = []
+  const problems = []
+
+  const number = (v) => (typeof v === 'number' ? v : Number(v ?? 0) || 0)
+
+  for (const record of rows) {
+    const rawState = String(record.fields['State'] ?? '').trim()
+    const abbr = NAME_TO_ABBR[rawState]
+
+    if (!rawState) problems.push(`${record.id}: no State`)
+    else if (!abbr) problems.push(`unrecognised State "${rawState}"`)
+    else
+      reports.push({
+        abbr,
+        reg: number(record.fields['Total Voter Reg']),
+        pledge: number(record.fields['Total Pledges']),
+        students: number(record.fields['Total Students Engaged']),
+      })
+  }
+
+  if (problems.length) fail('state report', problems)
+
+  reports.sort((a, b) => a.abbr.localeCompare(b.abbr))
+
+  const rowsOut = reports
+    .map(
+      (r) =>
+        `  ${r.abbr}: { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students} },`,
+    )
+    .join('\n')
+
+  const reported = reports.filter((r) => r.reg || r.pledge || r.students).length
+
+  emit(
+    'reports.ts',
+    HEADER(
+      'the "States" table in the VOT 2026 Soft Side Reports base',
+      ` * Measured programme numbers, replacing what used to be generated. Airtable rolls
+ * these up from the chapter and fellow report tables, so they move as reports land
+ * rather than when this file is edited.
+ *
+ * A state absent here reports zero — it is not on the reporting board yet, which is not
+ * the same as having done nothing. Goals are still placeholders; Airtable holds no
+ * targets to compare these against.`,
+    ) +
+      `
+export interface StateReport {
+  /** Voter registration forms collected. */
+  reg: number
+  /** Pledges to vote collected. */
+  pledge: number
+  /** Students engaged. */
+  students: number
+}
+
+export const REPORTS: Record<string, StateReport> = {
+${rowsOut}
+}
+
+const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0 }
+
+/** Reported totals for a state, zeroed where the state does not report yet. */
+export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
+`,
+    `${reports.length} states reporting (${reported} with a non-zero total)`,
+  )
+}
+
 /**
  * A row that cannot be mapped would be dropped from a list the dashboard presents as
  * complete, so it is worth stopping over rather than quietly shipping a short one.
@@ -489,3 +570,4 @@ function fail(what, problems) {
 
 await syncChapters()
 await syncCampuses()
+await syncReports()
