@@ -96,9 +96,6 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
             No coordinated program this cycle. Add it to the board to start tracking.
           </p>
         </div>
-        <div className="pfoot">
-          <button>Add to target board</button>
-        </div>
       </aside>
     )
   }

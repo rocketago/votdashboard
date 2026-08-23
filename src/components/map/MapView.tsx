@@ -252,18 +252,23 @@ function NationalLayers({
   return (
     <>
       <g>
-        {states.map((f) => (
-          <path
-            key={f.abbr}
-            className={`state${selected === f.abbr ? ' sel' : ''}`}
-            d={path(f) ?? undefined}
-            fill={stripeFill(activeTypes(f.abbr), COLORS.land)}
-            fillOpacity={isVisible(f.abbr) ? (campusLevel ? 0.5 : 0.86) : 1}
-            onMouseMove={(e) => onTip(e, stateTipText(f.abbr))}
-            onMouseLeave={onTipOut}
-            onClick={() => onSelect(f.abbr)}
-          />
-        ))}
+        {states.map((f) => {
+          // A state off the board — or filtered off it — has no panel worth opening, so
+          // it is inert rather than clickable-looking. `isVisible` is false for both.
+          const open = isVisible(f.abbr)
+          return (
+            <path
+              key={f.abbr}
+              className={`state${open ? '' : ' static'}${selected === f.abbr ? ' sel' : ''}`}
+              d={path(f) ?? undefined}
+              fill={stripeFill(activeTypes(f.abbr), COLORS.land)}
+              fillOpacity={open ? (campusLevel ? 0.5 : 0.86) : 1}
+              onMouseMove={(e) => onTip(e, stateTipText(f.abbr))}
+              onMouseLeave={onTipOut}
+              onClick={open ? () => onSelect(f.abbr) : undefined}
+            />
+          )
+        })}
       </g>
 
       <g style={{ opacity: campusLevel ? 0.35 : 1 }}>
@@ -424,7 +429,7 @@ function StateLayers({
           return (
             <path
               key={f.district}
-              className="cd"
+              className={`cd${isTarget ? '' : ' other'}`}
               d={path(f) ?? undefined}
               fill={isTarget ? tierColor : COLORS.districtOther}
               fillOpacity={isTarget ? 0.92 : 0.85}

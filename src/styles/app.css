@@ -82,6 +82,9 @@ svg#map { display: block; width: 100%; height: 100% }
 .state:hover { stroke: var(--fg); stroke-width: 1.4 }
 .state.sel { stroke: var(--fg); stroke-width: 2 }
 .state.dim { opacity: .22 }
+/* Off the board, or filtered off it: nothing to open, so nothing that invites a click. */
+.state.static { cursor: default }
+.state.static:hover { stroke: var(--ink); stroke-width: .9 }
 .slabel {
   font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; font-weight: 500;
   fill: #fff; pointer-events: none; text-anchor: middle;
@@ -115,6 +118,8 @@ svg#map { display: block; width: 100%; height: 100% }
 
 .cd { stroke: #0d1016; stroke-width: 1; cursor: pointer }
 .cd:hover { stroke: #fff; stroke-width: 1.6 }
+.cd.other { cursor: default }
+.cd.other:hover { stroke: #0d1016; stroke-width: 1 }
 .cdlabel {
   font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; fill: #fff;
   pointer-events: none; text-anchor: middle; paint-order: stroke;
