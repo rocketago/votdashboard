@@ -268,7 +268,8 @@ main:not(.open) .panel { visibility: hidden }
   font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600;
   padding: 3.5px 8px; border: 1px solid var(--line-2); color: var(--fg-2);
 }
-.tag.on { border-color: transparent; color: #0d1016 }
+/* Colour comes from the tier, which knows what is readable on its own fill. */
+.tag.on { border-color: transparent }
 /* Overlapping designations, on a chip already filled with the dominant one. The ring
    keeps a dot legible against whichever colour it lands on. */
 .odot {

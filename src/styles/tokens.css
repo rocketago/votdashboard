@@ -13,11 +13,11 @@
 
   /* Target-type accents. Mirrored in src/data/tiers.ts, which the SVG layers read —
      SVG presentation attributes cannot resolve var(), so the map needs literals. */
-  --prio: #ff7a3d;   /* Hard Target */
-  --soft: #3fd2c7;   /* Soft Target */
-  --nice: #8b7bd8;   /* Development Target */
-  --sdev: #63c76a;   /* Secondary Development */
-  --chapter: #f4d03f;
+  --prio: #e2604f;   /* Hard Target */
+  --soft: #2c9c93;   /* Soft Target */
+  --nice: #e5a343;   /* Development Target */
+  --sdev: #2e3a6e;   /* Secondary Development */
+  --chapter: #b32c86;
 
   --land: #1a212c;
 }

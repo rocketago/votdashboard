@@ -42,7 +42,7 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
   const [districtLabel, setDistrictLabel] = useState<string | null>(null)
   const [tip, setTip] = useState<Tip | null>(null)
 
-  const { activeTypes, activeTypesOf, isVisible, visibleStates, filters } = targets
+  const { activeTypes, activeTypesOf, isVisible, visibleStates } = targets
 
   useEffect(() => {
     let cancelled = false
@@ -178,7 +178,6 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
               states={states}
               path={path}
               selected={selected}
-              showChapters={filters.chapter}
               activeTypes={activeTypes}
               isVisible={isVisible}
               onSelect={onSelect}
@@ -220,7 +219,6 @@ interface NationalProps {
   states: StateFeature[]
   path: Path
   selected: string | null
-  showChapters: boolean
   activeTypes: (abbr: string) => TargetType[]
   isVisible: (abbr: string) => boolean
   onSelect: (abbr: string) => void
@@ -232,7 +230,6 @@ function NationalLayers({
   states,
   path,
   selected,
-  showChapters,
   activeTypes,
   isVisible,
   onSelect,
@@ -286,27 +283,28 @@ function NationalLayers({
           })}
       </g>
 
-      {showChapters && (
-        <g>
-          {states
-            .filter((f) => isVisible(f.abbr) && STATES[f.abbr]?.chapter === 'established')
-            .map((f) => {
-              const [cx, cy] = path.centroid(f)
-              return (
-                <circle
-                  key={f.abbr}
-                  className="chapdot"
-                  cx={cx}
-                  cy={cy - 13}
-                  r={3.4}
-                  fill="none"
-                  stroke={COLORS.chapter}
-                  strokeWidth={1.6}
-                />
-              )
-            })}
-        </g>
-      )}
+      {/* Chapter markers. A filled dot with a white ring, which keeps it legible on any
+          of the four tier fills — the Secondary Development navy included. */}
+      <g>
+        {states
+          .filter((f) => isVisible(f.abbr) && STATES[f.abbr]?.chapter === 'established')
+          .map((f) => {
+            const [cx, cy] = path.centroid(f)
+            return (
+              <circle
+                key={f.abbr}
+                className="chapdot"
+                cx={cx}
+                cy={cy - 13}
+                r={3.6}
+                fill={COLORS.chapter}
+                stroke="#fff"
+                strokeWidth={1.4}
+              />
+            )
+          })}
+      </g>
+
 
 
     </>
@@ -430,8 +428,8 @@ function StateLayers({
             >
               <circle
                 r={5}
-                fill={COLORS.chapter}
-                stroke={COLORS.chapter}
+                fill={COLORS.campus}
+                stroke={COLORS.campus}
                 strokeWidth={1.4}
               />
               <text
@@ -507,7 +505,7 @@ function StateOverlay({
           Other district
         </div>
         <div>
-          <i style={{ background: COLORS.chapter, borderRadius: '50%' }} />
+          <i style={{ background: COLORS.campus, borderRadius: '50%' }} />
           Campus program
         </div>
       </div>

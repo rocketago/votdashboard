@@ -2,8 +2,8 @@ import { TARGET_ORDER, TIER } from '../data/tiers'
 import type { TargetFilters as Filters } from '../hooks/useTargetFilters'
 
 /**
- * The map sidebar. These filters are shared across all three tabs, so unchecking
- * Development here also drops development-only states from the calendar and feed.
+ * The map sidebar. These filters are shared by both tabs, so unchecking Development
+ * here also drops development-only states from the calendar.
  */
 export function TargetFilters({ filters, setFilter, setAll }: Filters) {
   return (
@@ -23,21 +23,6 @@ export function TargetFilters({ filters, setFilter, setAll }: Filters) {
         ))}
       </div>
 
-      <div className="fdiv" />
-
-      <div className="fgroup">
-        <h3>Chapter status</h3>
-        <label className="chk">
-          <input
-            type="checkbox"
-            checked={filters.chapter}
-            onChange={(e) => setFilter('chapter', e.target.checked)}
-          />
-          <span className="swatch" style={{ background: 'var(--chapter)' }} />
-          Existing chapter
-        </label>
-      </div>
-
       <div className="linkrow">
         <button onClick={() => setAll(true)}>Select all</button>
         <button onClick={() => setAll(false)}>Clear all</button>
@@ -46,8 +31,8 @@ export function TargetFilters({ filters, setFilter, setAll }: Filters) {
       <div className="fdiv" />
 
       <div className="fnote">
-        States carrying more than one checked target show alternating stripes. Ring marks an
-        existing chapter.
+        States carrying more than one checked target show alternating stripes, the
+        strongest as the field.
       </div>
     </aside>
   )

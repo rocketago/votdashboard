@@ -2,10 +2,10 @@ import { useCallback, useMemo, useState } from 'react'
 import { TARGET_ORDER, type TargetType } from '../data/tiers'
 import { STATES } from '../data/states'
 
-/** Filter keys: the three target types plus the chapter-status overlay. */
-export type TargetFilterKey = TargetType | 'chapter'
+/** Filter keys: one per target type. */
+export type TargetFilterKey = TargetType
 
-export const TARGET_FILTER_KEYS: TargetFilterKey[] = [...TARGET_ORDER, 'chapter']
+export const TARGET_FILTER_KEYS: TargetFilterKey[] = [...TARGET_ORDER]
 
 export interface TargetFilters {
   filters: Record<TargetFilterKey, boolean>

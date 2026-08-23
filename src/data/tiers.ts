@@ -4,18 +4,23 @@ export type TargetType = 'soft' | 'hard' | 'dev' | 'sdev'
 export interface TierSpec {
   label: string
   color: string
+  /**
+   * Readable foreground on `color`, for the solid chips in the detail panel.
+   * Secondary Development is dark enough that near-black text on it fails badly —
+   * 1.8:1 — so it is the one that takes light text.
+   */
+  text: string
 }
 
+/** Text colours the tiers choose between. */
+const INK = '#0d1016'
+const PAPER = '#eef2f7'
+
 export const TIER: Record<TargetType, TierSpec> = {
-  hard: { label: 'Hard Target', color: '#ff7a3d' },
-  soft: { label: 'Soft Target', color: '#3fd2c7' },
-  dev: { label: 'Development Target', color: '#8b7bd8' },
-  // Green, chosen against the other three rather than in isolation. It has to survive
-  // three tests: solid beside a Development state (Arizona borders Nevada), a ribbon
-  // over Hard orange, which is how eight of the ten carry it, and a 6px dot on a chip.
-  // A magenta read as Development at every size; green is the furthest hue from it that
-  // still separates from the Soft teal.
-  sdev: { label: 'Secondary Development', color: '#63c76a' },
+  hard: { label: 'Hard Target', color: '#e2604f', text: INK },
+  soft: { label: 'Soft Target', color: '#2c9c93', text: INK },
+  dev: { label: 'Development Target', color: '#e5a343', text: INK },
+  sdev: { label: 'Secondary Development', color: '#2e3a6e', text: PAPER },
 }
 
 /**
@@ -38,7 +43,10 @@ export function rankTypes(types: readonly TargetType[]): TargetType[] {
 export const COLORS = {
   ink: '#0d1016',
   land: '#1a212c',
-  chapter: '#f4d03f',
+  /** Chapter markers on the national board. Deliberately not a tier colour. */
+  chapter: '#b32c86',
+  /** Campus programme dots at state zoom. */
+  campus: '#f0f3f8',
   /** Fill for a congressional district that is not a target. */
   districtOther: '#252d3b',
   /** Fill for the selected state's landmass behind its districts. */

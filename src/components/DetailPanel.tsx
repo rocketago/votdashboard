@@ -118,7 +118,10 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
               className="tag on"
               // The target's own dominant type, which can differ from the state's — a
               // Hard-only race in a state that is also Soft, say.
-              style={{ background: TIER[target.types[0]!].color }}
+              style={{
+                background: TIER[target.types[0]!].color,
+                color: TIER[target.types[0]!].text,
+              }}
               title={target.types.map((t) => TIER[t].label).join(' + ')}
             >
               {targetLabel(target)}
