@@ -30,7 +30,7 @@ export function hash(str: string): number {
 /** Hash normalised to the 0..1 range. */
 const unit = (str: string): number => hash(str) / 4294967295
 
-export type ChapterStatus = 'established' | 'building' | 'none'
+export type ChapterStatus = 'established' | 'none'
 
 /**
  * Legacy single-tier classification. Superseded by the multi-target `types` list
@@ -43,7 +43,6 @@ const SCALE: Record<ScaleTier, number> = { priority: 1, soft: 0.55, nice: 0.3 }
 
 const CHAPTER_BASE: Record<ChapterStatus, number> = {
   established: 9000,
-  building: 2600,
   none: 700,
 }
 

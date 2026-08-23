@@ -1,6 +1,7 @@
 import { CHAPTER_STATUS, STATE_NAME, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
 import { SETTING_LABEL, chaptersIn } from '../data/chapters'
+import { campusesIn } from '../data/campuses'
 import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
 import { targetLabel } from '../data/targets'
 
@@ -46,6 +47,7 @@ export function DetailPanel({ abbr, onClose }: Props) {
   const chapter = CHAPTER_STATUS[record.chapter]
   const events = eventsIn(abbr)
   const chapters = chaptersIn(abbr)
+  const campuses = campusesIn(abbr)
   const tierColor = TIER[record.tier].color
 
   return (
@@ -178,6 +180,22 @@ export function DetailPanel({ abbr, onClose }: Props) {
           </div>
         ) : (
           <p className="empty">No chartered chapter here yet.</p>
+        )}
+      </div>
+
+      <div className="psec">
+        <h4>Campus programs</h4>
+        {campuses.length ? (
+          <div className="plist">
+            {campuses.map((c) => (
+              <div className="p" key={c.name}>
+                <b>{c.name}</b>
+                <span>{c.hasChapter ? 'chapter' : 'prospect'}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="empty">No campus program yet.</p>
         )}
       </div>
 

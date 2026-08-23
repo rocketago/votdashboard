@@ -122,9 +122,9 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
     const source = STATE_SOURCE[abbr] ?? { partners: [], scaleTier: 'nice' }
     const types = stateTargetTypes(abbr)
 
-    // Real data, from Airtable. Airtable records chapters that exist, so there is no
-    // equivalent of the old hand-set 'building' status — a state either has chapters
-    // or it does not.
+    // Real data, from Airtable, which records chapters that exist — so a state either
+    // has chapters or it does not. Anything in development lives in the Start a Chapter
+    // Requests table and is not synced.
     const chapters = chaptersIn(abbr)
     const chapter: ChapterStatus = chapters.length ? 'established' : 'none'
 
@@ -149,7 +149,6 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
 /** Chapter-status presentation: label and dot colour. */
 export const CHAPTER_STATUS: Record<ChapterStatus, { label: string; color: string }> = {
   established: { label: 'Established chapter', color: 'var(--chapter)' },
-  building: { label: 'In development', color: '#7f8ea3' },
   none: { label: 'No chapter yet', color: '#4a5566' },
 }
 
