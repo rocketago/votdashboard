@@ -3,8 +3,9 @@ import { geoAlbersUsa, geoConicConformal, geoPath } from 'd3-geo'
 import type { FeatureCollection, Geometry } from 'geojson'
 
 import { COLORS, TIER, type TargetType } from '../../data/tiers'
+import { mappableCampusesIn } from '../../data/campuses'
 import { STATES, districtNumber } from '../../data/states'
-import { MAPPABLE_CAMPUSES, campusType, mappableCampusesIn } from '../../data/campuses'
+import { targetsIn } from '../../data/targets'
 import {
   cachedDistricts,
   loadDistrictManifest,
@@ -43,7 +44,7 @@ export function MapView({ level, targets, selected, onSelect, onClose }: Props) 
   const [districtLabel, setDistrictLabel] = useState<string | null>(null)
   const [tip, setTip] = useState<Tip | null>(null)
 
-  const { activeTypes, isVisible, visibleStates, filters } = targets
+  const { activeTypes, activeTypesOf, isVisible, visibleStates, filters } = targets
 
   useEffect(() => {
     let cancelled = false
@@ -129,15 +130,25 @@ export function MapView({ level, targets, selected, onSelect, onClose }: Props) 
 
   const path = useMemo(() => (projection ? geoPath(projection) : null), [projection])
 
-  /** Every multi-type combination on the board right now, for the <defs> patterns. */
+  /** Every multi-type combination on the map right now, for the <defs> patterns. */
   const combos = useMemo(() => {
     const seen = new Map<string, TargetType[]>()
-    for (const abbr of visibleStates) {
-      const types = activeTypes(abbr)
+    const add = (types: TargetType[]) => {
       if (types.length > 1) seen.set(types.join('-'), types)
     }
+
+    for (const abbr of visibleStates) add(activeTypes(abbr))
+
+    // Districts are striped the same way at state zoom, and a district's combination is
+    // not always its state's — OH-09 is Soft + Hard inside a state that is also that.
+    if (selected) {
+      for (const target of targetsIn(selected)) {
+        if (target.district) add(activeTypesOf(target.types))
+      }
+    }
+
     return [...seen.values()]
-  }, [visibleStates, activeTypes])
+  }, [visibleStates, activeTypes, activeTypesOf, selected])
 
   const showTip = (e: MouseEvent, text: string) => {
     const rect = e.currentTarget.closest('.mapwrap')?.getBoundingClientRect()
@@ -160,7 +171,7 @@ export function MapView({ level, targets, selected, onSelect, onClose }: Props) 
               districts={districts}
               path={path}
               projection={projection!}
-              activeTypes={activeTypes}
+              activeTypesOf={activeTypesOf}
               onTip={showTip}
               onTipOut={hideTip}
             />
@@ -168,7 +179,6 @@ export function MapView({ level, targets, selected, onSelect, onClose }: Props) 
             <NationalLayers
               states={states}
               path={path}
-              projection={projection!}
               level={level}
               selected={selected}
               showChapters={filters.chapter}
@@ -197,11 +207,7 @@ export function MapView({ level, targets, selected, onSelect, onClose }: Props) 
       ) : (
         <>
           <StatsBar visibleStates={visibleStates} />
-          <div className="hint">
-            {level === 'campuses'
-              ? 'Dots are campus programs · click a state for detail'
-              : 'Click a state for detail'}
-          </div>
+          <div className="hint">Click a state for detail</div>
         </>
       )}
     </div>
@@ -216,7 +222,6 @@ type Path = ReturnType<typeof geoPath>
 interface NationalProps {
   states: StateFeature[]
   path: Path
-  projection: Projection
   level: MapLevel
   selected: string | null
   showChapters: boolean
@@ -230,7 +235,6 @@ interface NationalProps {
 function NationalLayers({
   states,
   path,
-  projection,
   level,
   selected,
   showChapters,
@@ -240,8 +244,6 @@ function NationalLayers({
   onTip,
   onTipOut,
 }: NationalProps) {
-  const campusLevel = level === 'campuses'
-
   const stateTipText = (abbr: string) => {
     const record = STATES[abbr]
     if (!record || !isVisible(abbr)) return `${abbr} · not targeted`
@@ -262,7 +264,7 @@ function NationalLayers({
               className={`state${open ? '' : ' static'}${selected === f.abbr ? ' sel' : ''}`}
               d={path(f) ?? undefined}
               fill={stripeFill(activeTypes(f.abbr), COLORS.land)}
-              fillOpacity={open ? (campusLevel ? 0.5 : 0.86) : 1}
+              fillOpacity={open ? 0.86 : 1}
               onMouseMove={(e) => onTip(e, stateTipText(f.abbr))}
               onMouseLeave={onTipOut}
               onClick={open ? () => onSelect(f.abbr) : undefined}
@@ -271,7 +273,7 @@ function NationalLayers({
         })}
       </g>
 
-      <g style={{ opacity: campusLevel ? 0.35 : 1 }}>
+      <g>
         {states
           .filter((f) => !SMALL.has(f.abbr))
           .map((f) => {
@@ -343,26 +345,6 @@ function NationalLayers({
         </g>
       )}
 
-      {campusLevel && (
-        <g>
-          {MAPPABLE_CAMPUSES.filter((c) => isVisible(c.state)).map((c) => {
-            const point = projection([c.lon, c.lat])
-            if (!point) return null
-            return (
-              <g
-                key={c.name}
-                className="campus"
-                transform={`translate(${point[0]},${point[1]})`}
-                onMouseMove={(e) => onTip(e, c.name)}
-                onMouseLeave={onTipOut}
-                onClick={() => onSelect(c.state)}
-              >
-                <circle r={5.5} fill={TIER[campusType(c)].color} stroke={COLORS.ink} strokeWidth={1.4} />
-              </g>
-            )
-          })}
-        </g>
-      )}
     </>
   )
 }
@@ -375,7 +357,7 @@ interface StateProps {
   districts: DistrictFeature[]
   path: Path
   projection: Projection
-  activeTypes: (abbr: string) => TargetType[]
+  activeTypesOf: (types: readonly TargetType[]) => TargetType[]
   onTip: (e: MouseEvent, text: string) => void
   onTipOut: () => void
 }
@@ -398,12 +380,20 @@ function StateLayers({
   districts,
   path,
   projection,
-  activeTypes,
+  activeTypesOf,
   onTip,
   onTipOut,
 }: StateProps) {
-  const targeted = targetedDistricts(abbr)
-  const tierColor = tierColorFor(abbr, activeTypes)
+  // A district's own designations, not its state's: OH-13 is Soft + Hard in a state
+  // that also carries an unrelated Senate target. Filtered, so unchecking a type drops
+  // districts that only held it, exactly as it drops states.
+  const districtTypes = useMemo(() => {
+    const map = new Map<string, TargetType[]>()
+    for (const target of targetsIn(abbr)) {
+      if (target.district) map.set(target.district, activeTypesOf(target.types))
+    }
+    return map
+  }, [abbr, activeTypesOf])
   // Only the ones with coordinates can be drawn; Airtable has none yet.
   const campuses = mappableCampusesIn(abbr)
 
@@ -425,18 +415,23 @@ function StateLayers({
 
       <g>
         {districts.map((f) => {
-          const isTarget = targeted.has(f.district)
+          const types = districtTypes.get(f.district) ?? []
+          const isTarget = types.length > 0
           return (
             <path
               key={f.district}
               className={`cd${isTarget ? '' : ' other'}`}
               d={path(f) ?? undefined}
-              fill={isTarget ? tierColor : COLORS.districtOther}
+              fill={stripeFill(types, COLORS.districtOther)}
               fillOpacity={isTarget ? 0.92 : 0.85}
               onMouseMove={(e) =>
                 onTip(
                   e,
-                  `${abbr}-${f.district}${isTarget ? ' · target district' : ' · not targeted'}`,
+                  `${abbr}-${f.district}${
+                    isTarget
+                      ? ` · ${types.map((t) => TIER[t].label).join(' + ')}`
+                      : ' · not targeted'
+                  }`,
                 )
               }
               onMouseLeave={onTipOut}

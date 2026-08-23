@@ -16,6 +16,9 @@ import { rankTypes, type TargetType } from './tiers'
  * Note that the Soft list is currently a strict subset of the Hard list: all 20 Soft
  * targets also appear under Hard. Soft and Hard are therefore treated as overlapping
  * designations a single race can hold at once, not as mutually exclusive tiers.
+ *
+ * Development is not limited to statewide entries: NC-Sen and MI-Sen carry it alongside
+ * Soft and Hard, so a single race can hold all three.
  */
 
 export const SOFT_TARGETS = [
@@ -33,7 +36,7 @@ export const HARD_TARGETS = [
   'VA-05', 'PA-01', 'AK-00', 'IA-Sen', 'AK-Sen',
 ]
 
-export const DEVELOPMENT_TARGETS = ['SC', 'VA', 'NM', 'NV']
+export const DEVELOPMENT_TARGETS = ['NC-Sen', 'MI-Sen', 'SC', 'VA', 'NV', 'NM']
 
 /** What kind of contest a target is. */
 export type TargetScope = 'senate' | 'house' | 'state'

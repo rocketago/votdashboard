@@ -36,7 +36,7 @@ BASE_PATH=/votdashboard/ npm run build
 BASE_PATH=/votdashboard/ npm run preview   # http://localhost:4173/votdashboard/
 ```
 
-## The three tabs
+## The two tabs
 
 **Map.** The 24-state target board. States are filled by target type; a state carrying
 more than one shows a solid field of its dominant type with slim ribbons of the others
@@ -45,20 +45,24 @@ dominant fill, and the chip order in the detail panel all read from `TARGET_ORDE
 `src/data/tiers.ts`, so reordering that array moves all three together.
 
 Clicking a state zooms to it, draws its congressional districts, and opens the detail
-panel: chapter status, registrations and pledges against goal, scheduled events, target
-districts, campus programmes, partner orgs. The header's States / Districts / Campuses
+panel: chapter status, reported numbers, scheduled events, targets, and the campus
+programme. Districts are striped the same way states are, from their own designations —
+a district can carry a combination its state does not. The header's States / Districts
 switch changes what the national board overlays.
+
+States off the board take no click, and so do districts that are not targeted.
 
 **Calendar.** Every scheduled event nationally, one grid per month, colour-coded by
 programme type with the four type filters and a running tally. Clicking an event jumps
 to the map and opens that state.
 
-**Quick Facts.** Messaging blurbs, each led by chips for the states and districts it
-applies to. The sidebar filters by district, grouped by state. Clicking a chip opens
-that state on the map.
+The target-type filters are shared by both tabs, so unchecking Development also drops
+development-only states from the calendar.
 
-The target-type filters are shared across all three tabs, so unchecking Development also
-drops development-only states from the calendar and the feed.
+A third tab, Quick Facts, is built and working but switched off — the copy has not been
+through sign-off. `src/components/facts/` and `src/data/quickFacts.ts` are intact;
+restoring it means putting `facts` back in `VIEWS` in `src/components/Header.tsx` and its
+branch back in `App.tsx`.
 
 ## Swapping in real data
 
@@ -85,7 +89,7 @@ seat, `NV` for a statewide target with no specific race:
 ```ts
 export const SOFT_TARGETS = ['OH-09', 'NC-Sen', ...]
 export const HARD_TARGETS = ['OH-Sen', 'OH-09', ...]
-export const DEVELOPMENT_TARGETS = ['SC', 'VA', 'NM', 'NV']
+export const DEVELOPMENT_TARGETS = ['NC-Sen', 'MI-Sen', 'SC', 'VA', 'NV', 'NM']
 ```
 
 Editing those lists is the whole update. Which states appear on the map, what colour
@@ -99,8 +103,9 @@ Two properties of the current board worth knowing:
   two are treated as overlapping designations one race can hold at once, not as mutually
   exclusive tiers. If they were meant to be exclusive, the Soft list needs removing from
   the Hard list rather than a code change.
-- **Statewide Development targets sit alongside race targets.** VA and NM carry both, so
-  they read as Soft + Hard + Development. SC and NV are Development only.
+- **Development is not a statewide-only designation.** SC and NV are Development-only
+  states, but NC-Sen and MI-Sen carry it alongside Soft and Hard, so a single race can
+  hold all three.
 
 ### The numbers are fake
 
@@ -159,13 +164,11 @@ src/styles/          tokens.css (palette), app.css (layout, transcribed from the
 ## Known gaps
 
 - All figures and all messaging copy are placeholders pending sign-off.
-- The placeholder Quick Facts copy still references districts that are no longer on the
-  board (`AZ-01`, `TX-28`, `NV-01`, `MI-08`, `GA-13`, `MN-02` and others). The feed and
-  its filter tree derive from whatever copy is in `src/data/quickFacts.ts`, so replacing
-  the copy with real talking points fixes this on its own.
-- Chapter statuses, partner orgs and campus lists are still design-era placeholders, and
-  are retained for the 15 states that came off the board so nothing is lost if they
-  return.
+- The Quick Facts tab is switched off pending copy sign-off (see above). Its scopes are
+  filtered to the board, so three blurbs citing only districts that came off it render
+  nowhere — the copy is still in `src/data/quickFacts.ts` and rescoping brings them back.
+- Campus programmes have no coordinates in Airtable, so they are listed but not mapped.
+  Adding latitude and longitude to the Campuses table is what puts them on the map.
 - Event programme types were assigned during design, not by programme leads, and twelve
   distributed programmes were invented to populate the Distributed filters. They are
   flagged `invented: true` in `src/data/events.ts`.

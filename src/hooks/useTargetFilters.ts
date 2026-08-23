@@ -13,6 +13,11 @@ export interface TargetFilters {
   setAll: (on: boolean) => void
   /** A state's checked target types, in ranked order. Empty means filtered out. */
   activeTypes: (abbr: string) => TargetType[]
+  /**
+   * The checked subset of an explicit, already-ranked type list. Districts carry their
+   * own designations, which are not always their state's.
+   */
+  activeTypesOf: (types: readonly TargetType[]) => TargetType[]
   /** True when the state has at least one checked target type. */
   isVisible: (abbr: string) => boolean
   /** Every state currently on the board, abbreviations only. */
@@ -44,9 +49,14 @@ export function useTargetFilters(): TargetFilters {
     [filters],
   )
 
+  const activeTypesOf = useCallback(
+    (types: readonly TargetType[]): TargetType[] => types.filter((t) => filters[t]),
+    [filters],
+  )
+
   const isVisible = useCallback((abbr: string) => activeTypes(abbr).length > 0, [activeTypes])
 
   const visibleStates = useMemo(() => Object.keys(STATES).filter(isVisible), [isVisible])
 
-  return { filters, setFilter, setAll, activeTypes, isVisible, visibleStates }
+  return { filters, setFilter, setAll, activeTypes, activeTypesOf, isVisible, visibleStates }
 }

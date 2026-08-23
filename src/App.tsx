@@ -6,10 +6,7 @@ import { MapView } from './components/map/MapView'
 import { DetailPanel } from './components/DetailPanel'
 import { CalendarFilters } from './components/calendar/CalendarFilters'
 import { CalendarView } from './components/calendar/CalendarView'
-import { QuickFactsFilters } from './components/facts/QuickFactsFilters'
-import { QuickFactsView } from './components/facts/QuickFactsView'
 import { useTargetFilters } from './hooks/useTargetFilters'
-import { useScopeFilters } from './hooks/useScopeFilters'
 import type { ProgramType } from './data/events'
 
 export function App() {
@@ -18,7 +15,6 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null)
 
   const targets = useTargetFilters()
-  const scopes = useScopeFilters()
 
   const [programFilters, setProgramFilters] = useState<Record<ProgramType, boolean>>({
     hip: true,
@@ -61,7 +57,6 @@ export function App() {
   const mainClass = [
     view === 'map' && selected ? 'open' : '',
     view === 'cal' ? 'calview' : '',
-    view === 'facts' ? 'factview' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -107,16 +102,6 @@ export function App() {
           </>
         )}
 
-        {view === 'facts' && (
-          <>
-            <QuickFactsFilters {...scopes} />
-            <QuickFactsView
-              checked={scopes.checked}
-              isVisible={targets.isVisible}
-              onOpenState={openState}
-            />
-          </>
-        )}
       </main>
     </div>
   )

@@ -1,16 +1,14 @@
-export type View = 'map' | 'cal' | 'facts'
-export type MapLevel = 'states' | 'districts' | 'campuses'
+export type View = 'map' | 'cal'
+export type MapLevel = 'states' | 'districts'
 
 const VIEWS: { key: View; label: string }[] = [
   { key: 'map', label: 'Map' },
   { key: 'cal', label: 'Calendar' },
-  { key: 'facts', label: 'Quick Facts' },
 ]
 
 const LEVELS: { key: MapLevel; label: string }[] = [
   { key: 'states', label: 'States' },
   { key: 'districts', label: 'Districts' },
-  { key: 'campuses', label: 'Campuses' },
 ]
 
 interface Props {
