@@ -47,8 +47,7 @@ dominant fill, and the chip order in the detail panel all read from `TARGET_ORDE
 Clicking a state zooms to it, draws its congressional districts, and opens the detail
 panel: chapter status, reported numbers, scheduled events, targets, and the campus
 programme. Districts are striped the same way states are, from their own designations —
-a district can carry a combination its state does not. The header's States / Districts
-switch changes what the national board overlays.
+a district can carry a combination its state does not.
 
 States off the board take no click, and so do districts that are not targeted.
 
