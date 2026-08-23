@@ -5,8 +5,6 @@ import { campusesIn } from '../data/campuses'
 import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
 import { targetLabel } from '../data/targets'
 
-const pct = (value: number, goal: number) => Math.min(100, Math.round((value / goal) * 100))
-
 /**
  * How each kind of chapter reads, and the order the programme is listed in: broadest
  * footprint first, down to individual campuses, with fellows last.
@@ -93,7 +91,6 @@ export function DetailPanel({ abbr, onClose }: Props) {
   const events = eventsIn(abbr)
   const chapters = chaptersIn(abbr)
   const program = programIn(abbr)
-  const tierColor = TIER[record.tier].color
 
   return (
     <aside className="panel">
@@ -141,27 +138,14 @@ export function DetailPanel({ abbr, onClose }: Props) {
           <div className="metric">
             <div className="k">Voters registered</div>
             <div className="v mono">{record.reg.toLocaleString()}</div>
-            <div className="d">
-              {pct(record.reg, record.goal)}% of {record.goal.toLocaleString()} goal
-            </div>
-            <div className="bar">
-              <i style={{ width: `${pct(record.reg, record.goal)}%`, background: tierColor }} />
-            </div>
           </div>
           <div className="metric">
             <div className="k">Pledges to vote</div>
             <div className="v mono">{record.pledge.toLocaleString()}</div>
-            <div className="d">
-              {pct(record.pledge, record.pgoal)}% of {record.pgoal.toLocaleString()} goal
-            </div>
-            <div className="bar">
-              <i
-                style={{
-                  width: `${pct(record.pledge, record.pgoal)}%`,
-                  background: 'var(--soft)',
-                }}
-              />
-            </div>
+          </div>
+          <div className="metric">
+            <div className="k">Students engaged</div>
+            <div className="v mono">{record.students.toLocaleString()}</div>
           </div>
         </div>
       </div>

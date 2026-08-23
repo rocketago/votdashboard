@@ -12,7 +12,6 @@ import {
   deriveMetrics,
   type ChapterStatus,
   type DerivedMetrics,
-  type ScaleTier,
 } from '../lib/metrics'
 
 /**
@@ -29,56 +28,50 @@ import {
  */
 export interface StateSource {
   partners: string[]
-  /**
-   * Legacy single-tier classification, kept only to scale the placeholder metrics (see
-   * `src/lib/metrics.ts`) so that figures stay differentiated and stable. It encodes
-   * nothing real — delete it along with the generator once measured numbers land.
-   */
-  scaleTier: ScaleTier
 }
 
 export const STATE_SOURCE: Record<string, StateSource> = {
-  AZ: { scaleTier: 'priority', partners: ['Arizona Youth Vote', 'Chispa AZ'] },
-  GA: { scaleTier: 'priority', partners: ['New Georgia Project', 'Georgia Shift'] },
-  MI: { scaleTier: 'priority', partners: ['MI Student Power', 'Detroit Action'] },
-  NC: { scaleTier: 'priority', partners: ['NC Black Alliance', 'Down Home NC'] },
-  NV: { scaleTier: 'priority', partners: ['Silver State Voices'] },
-  PA: { scaleTier: 'priority', partners: ['PA Youth Vote', 'Make the Road PA'] },
-  WI: { scaleTier: 'priority', partners: ['WI Youth Power', 'BLOC'] },
-  TX: { scaleTier: 'priority', partners: ['MOVE Texas', 'Jolt Initiative'] },
+  AZ: { partners: ['Arizona Youth Vote', 'Chispa AZ'] },
+  GA: { partners: ['New Georgia Project', 'Georgia Shift'] },
+  MI: { partners: ['MI Student Power', 'Detroit Action'] },
+  NC: { partners: ['NC Black Alliance', 'Down Home NC'] },
+  NV: { partners: ['Silver State Voices'] },
+  PA: { partners: ['PA Youth Vote', 'Make the Road PA'] },
+  WI: { partners: ['WI Youth Power', 'BLOC'] },
+  TX: { partners: ['MOVE Texas', 'Jolt Initiative'] },
 
-  FL: { scaleTier: 'soft', partners: ['Florida Rising', 'Dream Defenders'] },
-  OH: { scaleTier: 'soft', partners: ['Ohio Student Assoc.'] },
-  VA: { scaleTier: 'soft', partners: ['New Virginia Majority'] },
-  MN: { scaleTier: 'soft', partners: ['MN Youth Collective'] },
-  CO: { scaleTier: 'soft', partners: ['New Era Colorado'] },
-  NH: { scaleTier: 'soft', partners: ['NH Youth Movement'] },
-  NM: { scaleTier: 'soft', partners: ['NM Native Vote'] },
-  IA: { scaleTier: 'soft', partners: [] },
-  ME: { scaleTier: 'soft', partners: ['Maine Youth Action'] },
+  FL: { partners: ['Florida Rising', 'Dream Defenders'] },
+  OH: { partners: ['Ohio Student Assoc.'] },
+  VA: { partners: ['New Virginia Majority'] },
+  MN: { partners: ['MN Youth Collective'] },
+  CO: { partners: ['New Era Colorado'] },
+  NH: { partners: ['NH Youth Movement'] },
+  NM: { partners: ['NM Native Vote'] },
+  IA: { partners: [] },
+  ME: { partners: ['Maine Youth Action'] },
 
-  CA: { scaleTier: 'nice', partners: ['CA Calls', 'Power CA Action'] },
-  NJ: { scaleTier: 'nice', partners: ['NJ Youth Power'] },
-  NY: { scaleTier: 'nice', partners: ['NY Youth Agenda'] },
-  IL: { scaleTier: 'nice', partners: ['Chicago Votes'] },
-  WA: { scaleTier: 'nice', partners: ['WA Youth Alliance'] },
-  MA: { scaleTier: 'nice', partners: ['MassVOTE'] },
-  OR: { scaleTier: 'nice', partners: ['Next Up Action'] },
-  MD: { scaleTier: 'nice', partners: [] },
-  MO: { scaleTier: 'nice', partners: [] },
-  TN: { scaleTier: 'nice', partners: ['The Equity Alliance'] },
-  UT: { scaleTier: 'nice', partners: [] },
-  CT: { scaleTier: 'nice', partners: [] },
-  KS: { scaleTier: 'nice', partners: [] },
-  IN: { scaleTier: 'nice', partners: [] },
-  MT: { scaleTier: 'nice', partners: [] },
-  AK: { scaleTier: 'nice', partners: [] },
-  SC: { scaleTier: 'nice', partners: [] },
-  LA: { scaleTier: 'nice', partners: [] },
-  KY: { scaleTier: 'nice', partners: [] },
-  NE: { scaleTier: 'nice', partners: [] },
-  OK: { scaleTier: 'nice', partners: [] },
-  AL: { scaleTier: 'nice', partners: [] },
+  CA: { partners: ['CA Calls', 'Power CA Action'] },
+  NJ: { partners: ['NJ Youth Power'] },
+  NY: { partners: ['NY Youth Agenda'] },
+  IL: { partners: ['Chicago Votes'] },
+  WA: { partners: ['WA Youth Alliance'] },
+  MA: { partners: ['MassVOTE'] },
+  OR: { partners: ['Next Up Action'] },
+  MD: { partners: [] },
+  MO: { partners: [] },
+  TN: { partners: ['The Equity Alliance'] },
+  UT: { partners: [] },
+  CT: { partners: [] },
+  KS: { partners: [] },
+  IN: { partners: [] },
+  MT: { partners: [] },
+  AK: { partners: [] },
+  SC: { partners: [] },
+  LA: { partners: [] },
+  KY: { partners: [] },
+  NE: { partners: [] },
+  OK: { partners: [] },
+  AL: { partners: [] },
 }
 
 export interface StateRecord extends DerivedMetrics {
@@ -126,7 +119,7 @@ export const STATE_NAME: Record<string, string> = {
  */
 export const STATES: Record<string, StateRecord> = Object.fromEntries(
   TARGET_STATES.map((abbr) => {
-    const source = STATE_SOURCE[abbr] ?? { partners: [], scaleTier: 'nice' }
+    const source = STATE_SOURCE[abbr] ?? { partners: [] }
     const types = stateTargetTypes(abbr)
 
     // Real data, from Airtable, which records chapters that exist — so a state either
@@ -148,7 +141,7 @@ export const STATES: Record<string, StateRecord> = Object.fromEntries(
         chapters: chapters.length,
         ...reportFor(abbr),
         partners: source.partners,
-        ...deriveMetrics(abbr, source.scaleTier, chapter),
+        ...deriveMetrics(abbr),
       } satisfies StateRecord,
     ]
   }),

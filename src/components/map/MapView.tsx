@@ -566,7 +566,6 @@ function StatsBar({ visibleStates }: { visibleStates: string[] }) {
     ['Target states', visibleStates.length],
     ['Voters registered', sum('reg').toLocaleString()],
     ['Pledges to vote', sum('pledge').toLocaleString()],
-    ['Chapters', visibleStates.filter((a) => STATES[a]?.chapter === 'established').length],
     ['Students engaged', sum('students').toLocaleString()],
   ]
 
