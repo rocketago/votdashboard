@@ -46,7 +46,6 @@ export const EVENTS: ProgramEvent[] = [
   { date: '2026-09-29', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-09-30', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-10-01', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
-  { date: '2026-10-03', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-10-03', time: "3:00 PM", state: 'CA', title: "Take Back the House 2026 California Youth Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-10-04', time: "4:00 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-10-06', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
@@ -69,4 +68,5 @@ export const EVENTS: ProgramEvent[] = [
   { date: '2026-10-29', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-10-31', time: "3:00 PM", state: 'CA', title: "Take Back the House 2026 California Youth Phone Banks!", meta: "Virtual", type: 'hd' },
   { date: '2026-11-01', time: "4:00 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
+  { date: '2026-11-03', time: "8:30 PM", state: 'CA', title: "Take Back the House 2026 California Phone Banks!", meta: "Virtual", type: 'hd' },
 ]
