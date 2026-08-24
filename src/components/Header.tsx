@@ -66,10 +66,13 @@ function AddTarget() {
     </div>
   )
 }
-const VIEWS: { key: View; label: string }[] = [
+const SPATIAL_VIEWS: { key: View; label: string }[] = [
   { key: 'map', label: 'Map' },
-  { key: 'cal', label: 'Calendar' },
   { key: 'list', label: 'List' },
+]
+
+const TEMPORAL_VIEWS: { key: View; label: string }[] = [
+  { key: 'cal', label: 'Event Calendar' },
   { key: 'stories', label: 'Story Bank' },
 ]
 
@@ -87,7 +90,15 @@ export function Header({ view, onView }: Props) {
       </div>
 
       <div className="views">
-        {VIEWS.map((v) => (
+        {SPATIAL_VIEWS.map((v) => (
+          <button key={v.key} aria-pressed={view === v.key} onClick={() => onView(v.key)}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="views">
+        {TEMPORAL_VIEWS.map((v) => (
           <button key={v.key} aria-pressed={view === v.key} onClick={() => onView(v.key)}>
             {v.label}
           </button>
