@@ -1,28 +1,22 @@
 /**
  * Story Bank — real-people testimonials tied to VOT organizing work.
  *
- * PLACEHOLDER DATA. Every name, quote, and detail below was written during the
- * design session and has not been collected from real participants. Replace verbatim
- * with real stories once they are collected; the feed renders whatever is here.
- *
  * Scope model mirrors `quickFacts.ts` exactly so the sidebar filter tree, scope-chip
  * components, and the `useScopeFilters`-style hook are all reusable without changes.
  *
- * Airtable-sync compatibility
- * ---------------------------
- * `stories.data.ts` is structured to be a GENERATED file, sourced from the EXISTING
- * `Fellow Reports` table (VOT 2026 Soft Side Reports base, appwnA2eTd4GfxZWE, table id
- * tbll3QFJsbGVvU4w0) rather than a dedicated Story Bank table. The future sync script reads:
- *   - `Name`                                                          → `name`
+ * Airtable sync
+ * -------------
+ * `stories.data.ts` is a GENERATED file, sourced from the Fellow Reports table
+ * (VOT 2026 Soft Side Reports base, appwnA2eTd4GfxZWE, table id tbll3QFJsbGVvU4w0).
+ * `scripts/sync-airtable.mjs` reads:
+ *   - `Name`                                                           → `name`
  *   - `What's one conversation with a voter that stood out this week?` → `quote`
- *   - `Where did this happen?`                                        → `location`
- *   - `Your State`                                                    → `scopes[].state`
- * Every story sourced from this form gets `category: 'fellow_report'` — the Fellow Report
- * form doesn't distinguish volunteer/campus/organizer/voter, so it isn't asked to. Base id
- * and table name go in the `SOURCE` object in `scripts/sync-airtable.mjs`, matching the
- * pattern used for `targets.data.ts` and `events.data.ts`. No changes to this file are
- * needed when the sync is wired up. (As of this writing the Fellow Reports table has a
- * single record with no populated fields — nothing to sync yet.)
+ *   - `Where did this happen?`                                         → `location`
+ *   - `Your State` (linked)                                            → `scopes[0].state`
+ * Every synced story gets `category: 'fellow_report'`. Re-run `npm run sync` to refresh.
+ *
+ * Placeholder sample stories (volunteer, voter, campus, organizer categories) live in
+ * `stories.sample.ts` and are merged in below alongside the generated list.
  */
 
 import { TARGET_STATES, targetDistrictsIn } from './targets'
@@ -96,8 +90,10 @@ export interface Story {
   placeholder?: true
 }
 
-export { STORIES as ALL_STORIES } from './stories.data'
-import { STORIES as ALL_STORIES } from './stories.data'
+import { STORIES as GENERATED_STORIES } from './stories.data'
+import { SAMPLE_STORIES } from './stories.sample'
+
+const ALL_STORIES: Story[] = [...GENERATED_STORIES, ...SAMPLE_STORIES]
 
 /* ---------- board-scoping (mirrors quickFacts.ts scopedToBoard) ---------- */
 
