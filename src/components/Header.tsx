@@ -71,10 +71,9 @@ const SPATIAL_VIEWS: { key: View; label: string }[] = [
   { key: 'list', label: 'List' },
 ]
 
-const TEMPORAL_VIEWS: { key: View; label: string }[] = [
-  { key: 'cal', label: 'Event Calendar' },
-  { key: 'stories', label: 'Story Bank' },
-]
+const TEMPORAL_VIEWS: { key: View; label: string }[] = [{ key: 'cal', label: 'Event Calendar' }]
+
+const STORY_VIEWS: { key: View; label: string }[] = [{ key: 'stories', label: 'Story Bank' }]
 
 interface Props {
   view: View
@@ -99,6 +98,14 @@ export function Header({ view, onView }: Props) {
 
       <div className="views">
         {TEMPORAL_VIEWS.map((v) => (
+          <button key={v.key} aria-pressed={view === v.key} onClick={() => onView(v.key)}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="views">
+        {STORY_VIEWS.map((v) => (
           <button key={v.key} aria-pressed={view === v.key} onClick={() => onView(v.key)}>
             {v.label}
           </button>
