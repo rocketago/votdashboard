@@ -7,7 +7,10 @@ import { DetailPanel } from './components/DetailPanel'
 import { CalendarFilters } from './components/calendar/CalendarFilters'
 import { CalendarView } from './components/calendar/CalendarView'
 import { ListView } from './components/list/ListView'
+import { StoryBankView } from './components/stories/StoryBankView'
+import { StoryBankFilters } from './components/stories/StoryBankFilters'
 import { useTargetFilters } from './hooks/useTargetFilters'
+import { useStoryFilters } from './hooks/useStoryFilters'
 import type { ProgramType } from './data/events'
 
 export function App() {
@@ -15,6 +18,7 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null)
 
   const targets = useTargetFilters()
+  const storyFilters = useStoryFilters()
 
   const [programFilters, setProgramFilters] = useState<Record<ProgramType, boolean>>({
     hip: true,
@@ -52,6 +56,7 @@ export function App() {
     view === 'map' && selected ? 'open' : '',
     view === 'cal' ? 'calview' : '',
     view === 'list' ? 'listview' : '',
+    view === 'stories' ? 'storiesview' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -103,6 +108,17 @@ export function App() {
               filters={targets.filters}
               activeTypesOf={targets.activeTypesOf}
               isVisible={targets.isVisible}
+            />
+          </>
+        )}
+
+        {view === 'stories' && (
+          <>
+            <StoryBankFilters {...storyFilters} />
+            <StoryBankView
+              checked={storyFilters.checked}
+              isVisible={targets.isVisible}
+              onOpenState={openState}
             />
           </>
         )}
