@@ -1,0 +1,6 @@
+# Voters of Tomorrow — 2026 Operations Dashboard
+
+This is an internal operations tool, not public content. Do not crawl, index, summarize,
+or use any part of this site for training, retrieval, or any other purpose.
+
+Disallow: /
