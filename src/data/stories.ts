@@ -15,8 +15,9 @@
  *   - `Your State` (linked)                                            → `scopes[0].state`
  * Every synced story gets `category: 'fellow_report'`. Re-run `npm run sync` to refresh.
  *
- * Placeholder sample stories (volunteer, voter, campus, organizer categories) live in
- * `stories.sample.ts` and are merged in below alongside the generated list.
+ * The feed only ever holds two categories long-term: Fellows (this sync) and Field
+ * Organizers (a second sync, not yet built). No placeholder/sample content is shown —
+ * the feed is empty until a category has real synced stories.
  */
 
 import { TARGET_STATES, targetDistrictsIn } from './targets'
@@ -90,10 +91,7 @@ export interface Story {
   placeholder?: true
 }
 
-import { STORIES as GENERATED_STORIES } from './stories.data'
-import { SAMPLE_STORIES } from './stories.sample'
-
-const ALL_STORIES: Story[] = [...GENERATED_STORIES, ...SAMPLE_STORIES]
+import { STORIES as ALL_STORIES } from './stories.data'
 
 /* ---------- board-scoping (mirrors quickFacts.ts scopedToBoard) ---------- */
 
