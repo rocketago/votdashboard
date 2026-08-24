@@ -10,12 +10,19 @@
  *
  * Airtable-sync compatibility
  * ---------------------------
- * `stories.data.ts` is structured to be a GENERATED file once a "Story Bank" table
- * is added to the VOT 2026 Soft Side Reports Airtable base. The future sync script
- * reads: Name, Quote, State, Districts (linked record), Category. Base id and table
- * name go in the `SOURCE` object in `scripts/sync-airtable.mjs`, matching the pattern
- * used for `targets.data.ts` and `events.data.ts`. No changes to this file are needed
- * when the sync is wired up.
+ * `stories.data.ts` is structured to be a GENERATED file, sourced from the EXISTING
+ * `Fellow Reports` table (VOT 2026 Soft Side Reports base, appwnA2eTd4GfxZWE, table id
+ * tbll3QFJsbGVvU4w0) rather than a dedicated Story Bank table. The future sync script reads:
+ *   - `Name`                                                          → `name`
+ *   - `What's one conversation with a voter that stood out this week?` → `quote`
+ *   - `Where did this happen?`                                        → `location`
+ *   - `Your State`                                                    → `scopes[].state`
+ * Every story sourced from this form gets `category: 'fellow_report'` — the Fellow Report
+ * form doesn't distinguish volunteer/campus/organizer/voter, so it isn't asked to. Base id
+ * and table name go in the `SOURCE` object in `scripts/sync-airtable.mjs`, matching the
+ * pattern used for `targets.data.ts` and `events.data.ts`. No changes to this file are
+ * needed when the sync is wired up. (As of this writing the Fellow Reports table has a
+ * single record with no populated fields — nothing to sync yet.)
  */
 
 import { TARGET_STATES, targetDistrictsIn } from './targets'
@@ -36,22 +43,30 @@ export interface StoryScope {
 /**
  * Story category / type.
  *
- * Four types cover the range of voices VOT collects:
+ * Five types cover the range of voices VOT collects:
  *   - `volunteer_story`  — a volunteer sharing their organizing experience
  *   - `voter_story`      — a newly registered or engaged voter recounting their experience
  *   - `campus_story`     — a campus chapter story, typically about a program milestone
  *   - `organizer_story`  — a professional or chapter organizer's account
+ *   - `fellow_report`    — sourced from the Fellow Report form; always this category
+ *     regardless of the fellow's role, since the form doesn't ask
  *
  * Kept as a string union (not an enum) so a future Airtable "Category" select field maps
  * directly: Airtable values are lowercased and underscored to match.
  */
-export type StoryCategory = 'volunteer_story' | 'voter_story' | 'campus_story' | 'organizer_story'
+export type StoryCategory =
+  | 'volunteer_story'
+  | 'voter_story'
+  | 'campus_story'
+  | 'organizer_story'
+  | 'fellow_report'
 
 export const STORY_CATEGORY_LABEL: Record<StoryCategory, string> = {
   volunteer_story: 'Volunteer',
   voter_story: 'Voter',
   campus_story: 'Campus',
   organizer_story: 'Organizer',
+  fellow_report: 'Fellow',
 }
 
 export interface Story {
@@ -64,6 +79,13 @@ export interface Story {
   name: string
   /** The testimonial text — a first-person quote or short narrative, unedited. */
   quote: string
+  /**
+   * Freeform "where this happened" text (e.g. "campus quad tabling table"), sourced from
+   * the Fellow Report form's "Where did this happen?" field. When present, the feed shows
+   * this on the story's chip instead of a district. `scopes` still carries the state (and
+   * district, where known) so sidebar filtering keeps working.
+   */
+  location?: string
   scopes: StoryScope[]
   category: StoryCategory
   /**

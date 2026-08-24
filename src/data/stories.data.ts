@@ -80,4 +80,31 @@ export const STORIES: Story[] = [
     category: 'organizer_story',
     placeholder: true,
   },
+  {
+    name: 'Maya R.',
+    quote:
+      'A voter told me she almost skipped registering because she figured her vote wouldn\'t matter in a district this red. I walked her through the last two margins here. She registered on the spot and asked for a yard sign.',
+    location: 'campus quad tabling table',
+    scopes: [{ state: 'PA', districts: ['07'] }],
+    category: 'fellow_report',
+    placeholder: true,
+  },
+  {
+    name: 'Diego F.',
+    quote:
+      'One resident at the complex had just turned 18 and didn\'t know he could register at his current address without a permanent ID yet. Walked him through it on the spot — he registered and pledged to vote.',
+    location: 'off-campus apartment complex canvass',
+    scopes: [{ state: 'WI', districts: ['03'] }],
+    category: 'fellow_report',
+    placeholder: true,
+  },
+  {
+    name: 'Priya N.',
+    quote:
+      'A student stopped by just to complain about the lines from the last election. By the end of the conversation she signed up to table with us next week — said she\'d rather fix it than just be annoyed about it.',
+    location: 'student union high-traffic table',
+    scopes: [{ state: 'MI', districts: ['07'] }],
+    category: 'fellow_report',
+    placeholder: true,
+  },
 ]
