@@ -7,6 +7,7 @@ import { DetailPanel } from './components/DetailPanel'
 import { CalendarFilters } from './components/calendar/CalendarFilters'
 import { CalendarView } from './components/calendar/CalendarView'
 import { ListView } from './components/list/ListView'
+import { StoryBankView } from './components/stories/StoryBankView'
 import { useTargetFilters } from './hooks/useTargetFilters'
 import type { ProgramType } from './data/events'
 
@@ -52,6 +53,7 @@ export function App() {
     view === 'map' && selected ? 'open' : '',
     view === 'cal' ? 'calview' : '',
     view === 'list' ? 'listview' : '',
+    view === 'stories' ? 'storyview' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -105,6 +107,10 @@ export function App() {
               isVisible={targets.isVisible}
             />
           </>
+        )}
+
+        {view === 'stories' && (
+          <StoryBankView onOpenState={openState} />
         )}
 
       </main>
