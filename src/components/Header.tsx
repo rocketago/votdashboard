@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-export type View = 'map' | 'cal' | 'list'
+export type View = 'map' | 'cal' | 'list' | 'stories'
 
 /** The Airtable forms behind the States and Districts tables the board is synced from. */
 const ADD_TARGET_FORMS: { label: string; href: string }[] = [
@@ -70,6 +70,7 @@ const VIEWS: { key: View; label: string }[] = [
   { key: 'map', label: 'Map' },
   { key: 'cal', label: 'Calendar' },
   { key: 'list', label: 'List' },
+  { key: 'stories', label: 'Story Bank' },
 ]
 
 interface Props {
