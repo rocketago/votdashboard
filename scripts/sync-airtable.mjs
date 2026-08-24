@@ -48,6 +48,10 @@ const SOURCE = {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     table: 'Event Tracker (Org-Wide)',
   },
+  stories: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    table: 'Fellow Reports',
+  },
   targets: {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     states: 'States',
@@ -993,6 +997,81 @@ export const EVENTS: ProgramEvent[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
   )
 }
 
+/* ---------------- fellow report stories ---------------- */
+
+async function syncStories() {
+  const { base, table } = SOURCE.stories
+  const [rows, stateRows] = await Promise.all([
+    allRecords(base, table),
+    allRecords(base, SOURCE.reports.table),
+  ])
+
+  // Build a map from Airtable state record id → USPS abbreviation, same join pattern
+  // as syncCampuses() uses for Districts.
+  const stateAbbr = new Map(
+    stateRows.map((s) => [
+      s.id,
+      NAME_TO_ABBR[String(s.fields['State'] ?? '').trim()] ?? null,
+    ]),
+  )
+
+  const stories = []
+  const problems = []
+
+  for (const record of rows) {
+    const f = record.fields
+
+    // Airtable omits empty fields, so a blank row arrives as {}. The Fellow Reports
+    // table currently has one such placeholder row — skip it rather than failing.
+    if (!Object.keys(f).length) continue
+
+    const name = String(f['Name'] ?? '').trim()
+    const quote = String(f["What's one conversation with a voter that stood out this week?"] ?? '').trim()
+    const location = String(f['Where did this happen?'] ?? '').trim()
+    const stateLinks = f['Your State'] ?? []
+    const abbr = stateLinks.length ? stateAbbr.get(stateLinks[0]) : null
+
+    if (!name) problems.push(`${record.id}: no Name`)
+    else if (!quote) problems.push(`${name}: no quote`)
+    else if (!location) problems.push(`${name}: no location`)
+    else if (!stateLinks.length) problems.push(`${name}: no Your State link`)
+    else if (!abbr) problems.push(`${name}: Your State link does not resolve to a known state`)
+    else stories.push({ name, quote, location, state: abbr })
+  }
+
+  if (problems.length) fail('story', problems)
+
+  stories.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name))
+
+  const rowsOut = stories
+    .map(
+      (s) =>
+        `  { name: ${JSON.stringify(s.name)}, quote: ${JSON.stringify(s.quote)}, ` +
+        `location: ${JSON.stringify(s.location)}, ` +
+        `scopes: [{ state: '${s.state}', districts: [] }], category: 'fellow_report' },`,
+    )
+    .join('\n')
+
+  emit(
+    'stories.data.ts',
+    HEADER(
+      'the "Fellow Reports" table in the VOT 2026 Soft Side Reports base',
+      ` * Real fellow-report stories, sourced from the Fellow Reports form. Every story
+ * sourced from this form gets \`category: 'fellow_report'\` — the form does not
+ * ask about the fellow's role, so no finer category is assigned.
+ *
+ * Placeholder sample stories (volunteer, voter, campus, organizer) live in
+ * \`stories.sample.ts\` and are merged in by \`stories.ts\` alongside this list.`,
+    ) +
+      `
+import type { Story } from './stories'
+
+export const STORIES: Story[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
+`,
+    `${stories.length} fellow report stories`,
+  )
+}
+
 /**
  * A row that cannot be mapped would be dropped from a list the dashboard presents as
  * complete, so it is worth stopping over rather than quietly shipping a short one.
@@ -1014,3 +1093,4 @@ await syncCampuses()
 await syncTargets()
 await syncReports()
 await syncEvents()
+await syncStories()
