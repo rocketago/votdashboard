@@ -6,6 +6,7 @@ import { MapView } from './components/map/MapView'
 import { DetailPanel } from './components/DetailPanel'
 import { CalendarFilters } from './components/calendar/CalendarFilters'
 import { CalendarView } from './components/calendar/CalendarView'
+import { ListView } from './components/list/ListView'
 import { useTargetFilters } from './hooks/useTargetFilters'
 import type { ProgramType } from './data/events'
 
@@ -50,6 +51,7 @@ export function App() {
   const mainClass = [
     view === 'map' && selected ? 'open' : '',
     view === 'cal' ? 'calview' : '',
+    view === 'list' ? 'listview' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -90,6 +92,17 @@ export function App() {
               programFilters={programFilters}
               isVisible={targets.isVisible}
               onOpenState={openState}
+            />
+          </>
+        )}
+
+        {view === 'list' && (
+          <>
+            <TargetFilters {...targets} />
+            <ListView
+              filters={targets.filters}
+              activeTypesOf={targets.activeTypesOf}
+              isVisible={targets.isVisible}
             />
           </>
         )}
