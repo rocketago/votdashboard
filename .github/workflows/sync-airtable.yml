@@ -1,0 +1,62 @@
+name: Sync Airtable data
+
+on:
+  schedule:
+    # Every hour at :00. GitHub's scheduler has ±10-min drift at peak load, which
+    # is fine — this is a data refresh, not a time-critical job.
+    - cron: '0 * * * *'
+  # Also runnable on demand from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: write  # to commit and push the updated data files
+  actions: write   # to dispatch the deploy workflow after a change
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pull latest data from Airtable
+        run: npm run sync
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+
+      - name: Commit updated data files
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/data/
+          if git diff --staged --quiet; then
+            echo "No data changes — skipping commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: sync Airtable data"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Pushes from GITHUB_TOKEN do not auto-trigger other workflows (GitHub's
+      # loop-prevention rule), so we dispatch the deploy workflow explicitly.
+      # This runs only when data actually changed, keeping deploys purposeful.
+      - name: Trigger deploy
+        if: steps.commit.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: 'main',
+            })
