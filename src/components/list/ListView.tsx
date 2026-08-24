@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { CAMPUSES } from '../../data/campuses'
 import { TARGETS } from '../../data/targets'
 import { TARGET_ORDER, TIER } from '../../data/tiers'
 import type { TargetFilters } from '../../hooks/useTargetFilters'
@@ -10,27 +9,18 @@ interface Props {
   isVisible: TargetFilters['isVisible']
 }
 
-/** Campuses indexed by district id for fast lookup. */
-const CAMPUSES_BY_DISTRICT = CAMPUSES.reduce<Record<string, typeof CAMPUSES>>(
-  (acc, c) => {
-    ;(acc[c.district] ??= []).push(c)
-    return acc
-  },
-  {},
-)
-
-export function ListView({ filters, activeTypesOf, isVisible }: Props) {
+export function ListView({ filters, activeTypesOf }: Props) {
   const groups = useMemo(() => {
     return TARGET_ORDER.map((groupType) => {
-      // A target lands in this group when the first type that survives the filter is groupType.
+      // A target appears in every group whose type is active on that target.
       const targets = TARGETS.filter((t) => {
         const active = activeTypesOf(t.types)
-        return active.length > 0 && active[0] === groupType
+        return active.includes(groupType)
       })
 
       return { groupType, spec: TIER[groupType], targets }
     }).filter((g) => g.targets.length > 0)
-  }, [filters, activeTypesOf, isVisible])
+  }, [filters, activeTypesOf])
 
   const totalActive = useMemo(
     () => TARGETS.filter((t) => activeTypesOf(t.types).length > 0).length,
@@ -60,59 +50,22 @@ export function ListView({ filters, activeTypesOf, isVisible }: Props) {
             </header>
 
             <div className="chips">
-              {targets.map((t) => {
-                const active = activeTypesOf(t.types)
-                const dominant = active[0]!
-                const domSpec = TIER[dominant]
-                const secondary = active.slice(1)
-                // Campuses linked to this district, if it's a House race.
-                const linkedCampuses =
-                  t.scope === 'house' && isVisible(t.state)
-                    ? (CAMPUSES_BY_DISTRICT[t.id] ?? [])
-                    : []
-
-                return (
-                  <span key={t.id} className="chip-wrap">
-                    <span
-                      className="chip"
-                      style={
-                        {
-                          '--chip-bg': domSpec.color,
-                          '--chip-fg': domSpec.text,
-                        } as React.CSSProperties
-                      }
-                    >
-                      <span className="chip-id">
-                        {t.scope === 'state' ? `${t.id} statewide` : t.id}
-                      </span>
-                      {secondary.map((s) => (
-                        <span
-                          key={s}
-                          className="chip-dot"
-                          style={{ background: TIER[s].color }}
-                          title={TIER[s].label}
-                        />
-                      ))}
-                    </span>
-                    {linkedCampuses.length > 0 && (
-                      <span
-                        className="chip-campus-row"
-                        style={
-                          {
-                            '--campus-color': domSpec.color,
-                          } as React.CSSProperties
-                        }
-                      >
-                        {linkedCampuses.map((c) => (
-                          <span key={c.name} className="chip-campus" title={c.name}>
-                            {c.name}
-                          </span>
-                        ))}
-                      </span>
-                    )}
+              {targets.map((t) => (
+                <span
+                  key={t.id}
+                  className="chip"
+                  style={
+                    {
+                      '--chip-bg': spec.color,
+                      '--chip-fg': spec.text,
+                    } as React.CSSProperties
+                  }
+                >
+                  <span className="chip-id">
+                    {t.scope === 'state' ? `${t.id} statewide` : t.id}
                   </span>
-                )
-              })}
+                </span>
+              ))}
             </div>
           </section>
         ))}
