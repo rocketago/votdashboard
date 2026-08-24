@@ -80,6 +80,14 @@ function StoryItem({
             )
           }
 
+          if (story.location) {
+            return (
+              <button key={scope.state} onClick={() => onOpenState(scope.state)}>
+                {story.location}
+              </button>
+            )
+          }
+
           if (!scope.districts.length) {
             return (
               <button key={scope.state} onClick={() => onOpenState(scope.state)}>
