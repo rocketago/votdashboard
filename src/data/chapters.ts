@@ -83,6 +83,8 @@ export const CHAPTERS: Chapter[] = [
   { name: "Oklahoma", state: 'OK', kind: 'community', setting: 'state' },
   { name: "Oregon", state: 'OR', kind: 'community', setting: 'state' },
   { name: "Penn State University", state: 'PA', kind: 'campus', setting: 'college', lat: 40.8015, lon: -77.8615 },
+  { name: "Spartanburg High School", state: 'SC', kind: 'community', setting: 'high-school', lat: 34.9792, lon: -81.8645 },
+  { name: "The University of Texas at Austin", state: 'TX', kind: 'campus', setting: 'college', lat: 30.2922, lon: -97.7389 },
   { name: "Hampton University", state: 'VA', kind: 'campus', setting: 'college', lat: 37.0218, lon: -76.3366 },
   { name: "Northern Virginia", state: 'VA', kind: 'community', setting: 'community', lat: 38.8156, lon: -77.2837, radius: 0.35 },
   { name: "Richard Bland College", state: 'VA', kind: 'campus', setting: 'college', lat: 37.2359, lon: -77.285 },
