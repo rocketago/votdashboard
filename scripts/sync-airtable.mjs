@@ -1077,12 +1077,14 @@ export const STORIES: Story[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
 /**
  * A row that cannot be mapped would be dropped from a list the dashboard presents as
  * complete, so it is worth stopping over rather than quietly shipping a short one.
+ *
+ * Throws instead of exiting so callers can catch per-sync and continue the sequence.
  */
 function fail(what, problems) {
   console.error(`\n${problems.length} ${what} record(s) could not be mapped:\n`)
   for (const p of problems) console.error(`  ${p}`)
   console.error('\nFix them in Airtable, or extend the tables in this script.')
-  process.exit(1)
+  throw new Error(`${what} sync failed: ${problems.length} unmapped record(s)`)
 }
 
 if (has('geocode-zips')) {
@@ -1090,9 +1092,29 @@ if (has('geocode-zips')) {
   process.exit(0)
 }
 
-await syncChapters()
-await syncCampuses()
-await syncTargets()
-await syncReports()
-await syncEvents()
-await syncStories()
+// Run every sync independently. A failure in one should not prevent the others
+// from updating their output files — the run still exits non-zero (so the GitHub
+// Actions job shows red and fix_1 alerting fires), but only after every sync has
+// had its chance to succeed.
+const syncErrors = []
+
+for (const [name, fn] of [
+  ['chapters', syncChapters],
+  ['campuses', syncCampuses],
+  ['targets', syncTargets],
+  ['reports', syncReports],
+  ['events', syncEvents],
+  ['stories', syncStories],
+]) {
+  try {
+    await fn()
+  } catch (err) {
+    console.error(`\n[sync] ${name} failed — continuing with remaining syncs\n  ${err.message}`)
+    syncErrors.push(name)
+  }
+}
+
+if (syncErrors.length) {
+  console.error(`\n[sync] ${syncErrors.length} sync(s) failed: ${syncErrors.join(', ')}`)
+  process.exit(1)
+}
