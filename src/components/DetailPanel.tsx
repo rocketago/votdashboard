@@ -4,8 +4,8 @@ import { CHAPTER_STATUS, STATES } from '../data/states'
 import { TIER } from '../data/tiers'
 import { chaptersIn, type ChapterSetting } from '../data/chapters'
 import { campusesIn } from '../data/campuses'
-import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
-import { targetLabel } from '../data/targets'
+import { eventsIn, eventsInDistrict, PROGRAM_TYPE, shortDate } from '../data/events'
+import { targetLabel, targetsIn } from '../data/targets'
 import { districtReportFor } from '../data/districtReports'
 
 /**
@@ -75,7 +75,7 @@ export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
   // reopened. Opening a state should start at the short list, not wherever the last one
   // was left.
   const [expanded, setExpanded] = useState(false)
-  useEffect(() => setExpanded(false), [abbr, open])
+  useEffect(() => setExpanded(false), [abbr, open, focusedDistrict])
 
   if (!abbr) return <aside className="panel" />
 
@@ -85,30 +85,53 @@ export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
   // the feed's scopes are filtered to the board — so there is no panel for one.
   if (!record) return <aside className="panel" />
 
+  // Once a district is zoomed into, the panel narrows to just that district: its own
+  // target tag, its own program numbers, its own events, its own campuses. Chapters
+  // are recorded per state in Airtable (not per district), so they have no honest
+  // district-scoped reading and are left out of the district view entirely rather than
+  // shown mislabeled as district-specific.
+  const focusedTarget = focusedDistrict
+    ? (targetsIn(abbr).find((t) => t.id === focusedDistrict) ?? null)
+    : null
+
   const chapter = CHAPTER_STATUS[record.chapter]
-  const events = eventsIn(abbr)
+  const events = focusedDistrict ? eventsInDistrict(focusedDistrict) : eventsIn(abbr)
   const shownEvents = expanded ? events : events.slice(0, EVENT_PREVIEW)
   const chapters = chaptersIn(abbr)
   const campuses = campusesIn(abbr)
-  const program = programIn(abbr)
+  const districtCampuses = focusedDistrict
+    ? campuses.filter((c) => c.district === focusedDistrict)
+    : campuses
+  const program = focusedDistrict
+    ? districtCampuses.map((c) => ({ name: c.name, detail: `fellows · ${c.district}`, label: 'fellows' }))
+    : programIn(abbr)
 
   // The section mixes two things, so the heading counts them separately rather than
-  // reporting a total that is neither a chapter count nor a campus count.
-  const programCounts = [
-    chapters.length && `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`,
-    campuses.length && `${campuses.length} fellowship campus${campuses.length === 1 ? '' : 'es'}`,
-  ].filter(Boolean)
+  // reporting a total that is neither a chapter count nor a campus count. In the
+  // district view there is only ever one kind (fellows), so it just reads as a count.
+  const programCounts = focusedDistrict
+    ? [districtCampuses.length && `${districtCampuses.length} fellowship campus${districtCampuses.length === 1 ? '' : 'es'}`].filter(Boolean)
+    : [
+        chapters.length && `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`,
+        campuses.length && `${campuses.length} fellowship campus${campuses.length === 1 ? '' : 'es'}`,
+      ].filter(Boolean)
 
   return (
     <aside className="panel">
       <div className="ptop">
         <div className="row">
           <div>
-            <h2>{record.name}</h2>
+            <h2>{focusedDistrict ?? record.name}</h2>
             <div className="abbr">
-              {abbr} · {record.targets.length} target race
-              {record.targets.length === 1 ? '' : 's'} · {chapters.length} chapter
-              {chapters.length === 1 ? '' : 's'}
+              {focusedDistrict ? (
+                <>{record.name}</>
+              ) : (
+                <>
+                  {abbr} · {record.targets.length} target race
+                  {record.targets.length === 1 ? '' : 's'} · {chapters.length} chapter
+                  {chapters.length === 1 ? '' : 's'}
+                </>
+              )}
             </div>
           </div>
           <button className="close" onClick={onClose}>
@@ -116,7 +139,7 @@ export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
           </button>
         </div>
         <div className="tags">
-          {record.targets.map((target) => (
+          {(focusedTarget ? [focusedTarget] : record.targets).map((target) => (
             <span
               key={target.id}
               className="tag on"
@@ -139,26 +162,28 @@ export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
         </div>
       </div>
 
-      <div className="psec">
-        <h4>Chapter presence</h4>
-        <div className="chapter">
-          <span className="dot" style={{ background: chapter.color }} />
-          <div>
-            <div className="t">{chapter.label}</div>
-            <div className="m">
-              {record.chapter === 'none'
-                ? 'No chartered chapter · nearest program out of state'
-                : `${record.chapters} active chapter${record.chapters === 1 ? '' : 's'}`}
+      {!focusedDistrict && (
+        <div className="psec">
+          <h4>Chapter presence</h4>
+          <div className="chapter">
+            <span className="dot" style={{ background: chapter.color }} />
+            <div>
+              <div className="t">{chapter.label}</div>
+              <div className="m">
+                {record.chapter === 'none'
+                  ? 'No chartered chapter · nearest program out of state'
+                  : `${record.chapters} active chapter${record.chapters === 1 ? '' : 's'}`}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {focusedDistrict && (() => {
+      {focusedDistrict ? (() => {
         const district = districtReportFor(focusedDistrict)
         return (
           <div className="psec">
-            <h4>{focusedDistrict} program to date</h4>
+            <h4>Program to date</h4>
             <div className="metrics">
               <div className="metric">
                 <div className="k">Voters registered</div>
@@ -175,29 +200,29 @@ export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
             </div>
           </div>
         )
-      })()}
-
-      <div className="psec">
-        <h4>Program to date{focusedDistrict ? ` · ${record.name} statewide` : ''}</h4>
-        <div className="metrics">
-          <div className="metric">
-            <div className="k">Voters registered</div>
-            <div className="v mono">{record.reg.toLocaleString()}</div>
-          </div>
-          <div className="metric">
-            <div className="k">Pledges to vote</div>
-            <div className="v mono">{record.pledge.toLocaleString()}</div>
-          </div>
-          <div className="metric">
-            <div className="k">Students engaged</div>
-            <div className="v mono">{record.students.toLocaleString()}</div>
-          </div>
-          <div className="metric">
-            <div className="k">Chapters</div>
-            <div className="v mono">{record.chapters}</div>
+      })() : (
+        <div className="psec">
+          <h4>Program to date</h4>
+          <div className="metrics">
+            <div className="metric">
+              <div className="k">Voters registered</div>
+              <div className="v mono">{record.reg.toLocaleString()}</div>
+            </div>
+            <div className="metric">
+              <div className="k">Pledges to vote</div>
+              <div className="v mono">{record.pledge.toLocaleString()}</div>
+            </div>
+            <div className="metric">
+              <div className="k">Students engaged</div>
+              <div className="v mono">{record.students.toLocaleString()}</div>
+            </div>
+            <div className="metric">
+              <div className="k">Chapters</div>
+              <div className="v mono">{record.chapters}</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="psec">
         <h4>Scheduled events · {events.length}</h4>
@@ -230,7 +255,7 @@ export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
 
       <div className="psec">
         <h4>
-          Chapters and campus programs
+          {focusedDistrict ? 'Campus programs' : 'Chapters and campus programs'}
           {programCounts.length ? ` · ${programCounts.join(' · ')}` : ''}
         </h4>
         {program.length ? (

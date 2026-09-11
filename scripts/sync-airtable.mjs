@@ -999,6 +999,18 @@ function stateOfRace(race) {
   return prefixed ? prefixed[1] : (NAME_TO_ABBR[text] ?? null)
 }
 
+/**
+ * The House district a targeted race belongs to, or null for a statewide/Senate race
+ * ("Ohio", "OH-Sen"). Same AK-AL -> AK-00 normalization as syncTargets().
+ */
+function districtOfRace(race) {
+  const text = String(race ?? '').trim()
+  const m = text.match(/^([A-Z]{2})-(\d{2}|AL)$/)
+  if (!m) return null
+  const [, state, suffix] = m
+  return suffix === 'AL' ? `${state}-00` : `${state}-${suffix}`
+}
+
 async function syncEvents() {
   const rows = await allRecords(SOURCE.events.base, SOURCE.events.table)
   const events = []
@@ -1029,8 +1041,14 @@ async function syncEvents() {
       const time = EASTERN_TIME.format(instant)
       const meta = String(f['Location'] ?? '').trim()
       // An event targeting races in several states is listed in each, so it shows up
-      // for every organiser it concerns.
-      for (const state of states) events.push({ date, time, state, title, meta, type })
+      // for every organiser it concerns. Where the race matching this state names a
+      // House district specifically, the event carries that district too, so it can be
+      // filtered down to just that district's schedule as well as the state's.
+      for (const state of states) {
+        const race = races.find((r) => stateOfRace(r) === state)
+        const district = race ? districtOfRace(race) : null
+        events.push({ date, time, state, district, title, meta, type })
+      }
     }
   }
 
@@ -1045,6 +1063,7 @@ async function syncEvents() {
     .map(
       (e) =>
         `  { date: '${e.date}', time: ${JSON.stringify(e.time)}, state: '${e.state}', ` +
+        `district: ${e.district ? `'${e.district}'` : 'null'}, ` +
         `title: ${JSON.stringify(e.title)}, meta: ${JSON.stringify(e.meta)}, type: '${e.type}' },`,
     )
     .join('\n')

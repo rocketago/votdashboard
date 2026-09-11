@@ -41,6 +41,9 @@ export interface ProgramEvent {
    */
   time: string
   state: string
+  /** House district (e.g. `'OH-09'`) the matching Targeted Race names, or null for a
+   *  statewide/Senate race. */
+  district: string | null
   title: string
   /** Free-text location / turnout detail. May be empty. */
   meta: string
@@ -74,6 +77,14 @@ for (const list of Object.values(BY_STATE)) {
 }
 
 export const eventsIn = (abbr: string): ProgramEvent[] => BY_STATE[abbr] ?? []
+
+const BY_DISTRICT = EVENTS.reduce<Record<string, ProgramEvent[]>>((acc, e) => {
+  if (e.district) (acc[e.district] ??= []).push(e)
+  return acc
+}, {})
+
+/** Events whose Targeted Race names this House district specifically (e.g. `'OH-09'`). */
+export const eventsInDistrict = (id: string): ProgramEvent[] => BY_DISTRICT[id] ?? []
 
 /**
  * Election day, and the months the calendar always shows.
