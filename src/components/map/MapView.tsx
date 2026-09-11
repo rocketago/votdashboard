@@ -27,6 +27,9 @@ interface Props {
   selected: string | null
   onSelect: (abbr: string) => void
   onClose: () => void
+  /** Fires whenever the zoomed-in district changes (or clears), so the sidebar can
+   *  show that district's own numbers instead of just the state's. */
+  onFocusDistrict?: (district: string | null) => void
 }
 
 interface Tip {
@@ -35,7 +38,7 @@ interface Tip {
   y: number
 }
 
-export function MapView({ targets, selected, onSelect, onClose }: Props) {
+export function MapView({ targets, selected, onSelect, onClose, onFocusDistrict }: Props) {
   const [wrapRef, { width, height }] = useElementSize<HTMLDivElement>()
   const [states, setStates] = useState<StateFeature[]>([])
   const [districts, setDistricts] = useState<DistrictFeature[]>([])
@@ -44,6 +47,11 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
   const [tip, setTip] = useState<Tip | null>(null)
   /** A target district the map is zoomed into, within the selected state. */
   const [zoomed, setZoomed] = useState<string | null>(null)
+  /** Sets the zoomed district and tells the parent, so the sidebar can follow along. */
+  const focusDistrict = (district: string | null) => {
+    setZoomed(district)
+    onFocusDistrict?.(district)
+  }
 
   const { activeTypes, activeTypesOf, isVisible, visibleStates } = targets
 
@@ -60,7 +68,9 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
     }
   }, [])
 
-  useEffect(() => setZoomed(null), [selected])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- focusDistrict is stable in
+  // effect: only the district value (via selected) actually needs to be reset here.
+  useEffect(() => focusDistrict(null), [selected])
 
   // District boundaries for the selected state, if any are installed.
   useEffect(() => {
@@ -179,7 +189,7 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
               projection={projection!}
               activeTypesOf={activeTypesOf}
               zoomed={zoomed}
-              onZoom={setZoomed}
+              onZoom={focusDistrict}
               onTip={showTip}
               onTipOut={hideTip}
             />
@@ -206,7 +216,7 @@ export function MapView({ targets, selected, onSelect, onClose }: Props) {
           abbr={selected!}
           districts={districts}
           zoomed={zoomed}
-          onZoomOut={() => setZoomed(null)}
+          onZoomOut={() => focusDistrict(null)}
           loading={loadingDistricts}
           districtLabel={districtLabel}
           activeTypes={activeTypes}

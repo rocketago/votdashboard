@@ -6,6 +6,7 @@ import { chaptersIn, type ChapterSetting } from '../data/chapters'
 import { campusesIn } from '../data/campuses'
 import { eventsIn, PROGRAM_TYPE, shortDate } from '../data/events'
 import { targetLabel } from '../data/targets'
+import { districtReportFor } from '../data/districtReports'
 
 /**
  * How each kind of chapter reads, and the order the programme is listed in: broadest
@@ -64,9 +65,12 @@ interface Props {
    */
   open: boolean
   onClose: () => void
+  /** Full district id (e.g. `'OH-09'`) the map is zoomed into, or null when the state
+   *  as a whole is in view. Adds a district-scoped metrics section above the state's. */
+  focusedDistrict?: string | null
 }
 
-export function DetailPanel({ abbr, open, onClose }: Props) {
+export function DetailPanel({ abbr, open, onClose, focusedDistrict }: Props) {
   // Collapses again whenever the panel moves to another state, or is closed and
   // reopened. Opening a state should start at the short list, not wherever the last one
   // was left.
@@ -150,8 +154,31 @@ export function DetailPanel({ abbr, open, onClose }: Props) {
         </div>
       </div>
 
+      {focusedDistrict && (() => {
+        const district = districtReportFor(focusedDistrict)
+        return (
+          <div className="psec">
+            <h4>{focusedDistrict} program to date</h4>
+            <div className="metrics">
+              <div className="metric">
+                <div className="k">Voters registered</div>
+                <div className="v mono">{district.reg.toLocaleString()}</div>
+              </div>
+              <div className="metric">
+                <div className="k">Pledges to vote</div>
+                <div className="v mono">{district.pledge.toLocaleString()}</div>
+              </div>
+              <div className="metric">
+                <div className="k">Students engaged</div>
+                <div className="v mono">{district.students.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="psec">
-        <h4>Program to date</h4>
+        <h4>Program to date{focusedDistrict ? ` · ${record.name} statewide` : ''}</h4>
         <div className="metrics">
           <div className="metric">
             <div className="k">Voters registered</div>
