@@ -1128,13 +1128,21 @@ async function syncStories() {
     if (!Object.keys(f).length) continue
 
     const name = String(f['Name'] ?? '').trim()
+
+    // A fellow submitted the form without filling in their name. That's a real gap in
+    // the response, not a broken sync — warn and drop the record rather than failing
+    // the whole sync over one incomplete submission.
+    if (!name) {
+      console.warn(`[sync] story ${record.id} has no Name — skipping`)
+      continue
+    }
+
     const quote = String(f["What's one conversation with a voter that stood out this week?"] ?? '').trim()
     const location = String(f['Where did this happen?'] ?? '').trim()
     const stateLinks = f['Your State'] ?? []
     const abbr = stateLinks.length ? stateAbbr.get(stateLinks[0]) : null
 
-    if (!name) problems.push(`${record.id}: no Name`)
-    else if (!quote) problems.push(`${name}: no quote`)
+    if (!quote) problems.push(`${name}: no quote`)
     else if (!location) problems.push(`${name}: no location`)
     else if (!stateLinks.length) problems.push(`${name}: no Your State link`)
     else if (!abbr) problems.push(`${name}: Your State link does not resolve to a known state`)
