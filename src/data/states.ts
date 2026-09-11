@@ -36,6 +36,8 @@ export interface StateRecord {
   pledge: number
   /** Students engaged, reported to date. */
   students: number
+  /** Total events held, reported to date. */
+  events: number
 }
 
 export const STATE_NAME: Record<string, string> = {

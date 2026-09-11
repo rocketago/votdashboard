@@ -672,6 +672,7 @@ async function syncReports() {
         reg: number(record.fields['Total Voter Reg']),
         pledge: number(record.fields['Total Pledges']),
         students: number(record.fields['Total Students Engaged']),
+        events: number(record.fields['Total Events']),
       })
   }
 
@@ -682,7 +683,7 @@ async function syncReports() {
   const rowsOut = reports
     .map(
       (r) =>
-        `  ${r.abbr}: { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students} },`,
+        `  ${r.abbr}: { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students}, events: ${r.events} },`,
     )
     .join('\n')
 
@@ -708,13 +709,15 @@ export interface StateReport {
   pledge: number
   /** Students engaged. */
   students: number
+  /** Total events held. */
+  events: number
 }
 
 export const REPORTS: Record<string, StateReport> = {
 ${rowsOut}
 }
 
-const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0 }
+const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0, events: 0 }
 
 /** Reported totals for a state, zeroed where the state does not report yet. */
 export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
