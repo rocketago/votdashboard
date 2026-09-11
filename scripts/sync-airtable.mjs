@@ -726,6 +726,77 @@ export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
   )
 }
 
+/**
+ * The same `Total Voter Reg` / `Total Pledges` / `Total Students Engaged` rollups as
+ * `syncReports()`, but read off the Districts table instead of States — one program-
+ * to-date reading per House district (`OH-09`, `AK-00`, ...) rather than per state.
+ */
+async function syncDistrictReports() {
+  const { base, districts: table } = SOURCE.targets
+  const rows = await allRecords(base, table)
+  const reports = []
+  const problems = []
+
+  const number = (v) => (typeof v === 'number' ? v : Number(v ?? 0) || 0)
+
+  for (const record of rows) {
+    // Same AK-AL -> AK-00 fix as syncTargets(), so ids match targets.data.ts exactly.
+    const id = String(record.fields['District Name'] ?? '').trim().replace(/-AL$/, '-00')
+    if (!id) continue
+    if (!/^[A-Z]{2}-\d{2}$/.test(id)) {
+      problems.push(`district "${id}" is not a state and number`)
+      continue
+    }
+
+    reports.push({
+      id,
+      reg: number(record.fields['Total Voter Reg']),
+      pledge: number(record.fields['Total Pledges']),
+      students: number(record.fields['Total Students Engaged']),
+    })
+  }
+
+  if (problems.length) fail('district report', problems)
+
+  reports.sort((a, b) => a.id.localeCompare(b.id))
+
+  const rowsOut = reports
+    .map((r) => `  '${r.id}': { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students} },`)
+    .join('\n')
+
+  const reported = reports.filter((r) => r.reg || r.pledge || r.students).length
+
+  emit(
+    'districtReports.ts',
+    HEADER(
+      'the "Districts" table in the VOT 2026 Soft Side Reports base',
+      ` * Per-district program-to-date numbers — the same shape as reports.ts (states), keyed
+ * by district id instead. A district absent here reports zero, same convention as
+ * reports.ts: not on the reporting board yet, not the same as having done nothing.`,
+    ) +
+      `
+export interface DistrictReport {
+  /** Voter registration forms collected. */
+  reg: number
+  /** Pledges to vote collected. */
+  pledge: number
+  /** Students engaged. */
+  students: number
+}
+
+export const DISTRICT_REPORTS: Record<string, DistrictReport> = {
+${rowsOut}
+}
+
+const NOTHING: DistrictReport = { reg: 0, pledge: 0, students: 0 }
+
+/** Reported totals for a district, zeroed where the district does not report yet. */
+export const districtReportFor = (id: string): DistrictReport => DISTRICT_REPORTS[id] ?? NOTHING
+`,
+    `${reports.length} districts reporting (${reported} with a non-zero total)`,
+  )
+}
+
 /* ---------------- geocoding helper ---------------- */
 
 /**
@@ -1106,6 +1177,7 @@ for (const [name, fn] of [
   ['campuses', syncCampuses],
   ['targets', syncTargets],
   ['reports', syncReports],
+  ['districtReports', syncDistrictReports],
   ['events', syncEvents],
   ['stories', syncStories],
 ]) {

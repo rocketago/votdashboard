@@ -16,6 +16,8 @@ import type { ProgramType } from './data/events'
 export function App() {
   const [view, setView] = useState<View>('map')
   const [selected, setSelected] = useState<string | null>(null)
+  /** The district number (e.g. '09') the map is currently zoomed into, if any. */
+  const [focusedDistrict, setFocusedDistrict] = useState<string | null>(null)
 
   const targets = useTargetFilters()
   const storyFilters = useStoryFilters()
@@ -74,6 +76,7 @@ export function App() {
               selected={selected}
               onSelect={setSelected}
               onClose={closePanel}
+              onFocusDistrict={setFocusedDistrict}
             />
             {/* `abbr` falls back to the last selection so the panel keeps its content
                 while it slides shut; `open` is the honest state, and what the panel
@@ -82,6 +85,11 @@ export function App() {
               abbr={selected ?? lastSelected.current}
               open={selected !== null}
               onClose={closePanel}
+              // Full district id (e.g. 'OH-09'), matching the Target/report id format —
+              // null once nothing is zoomed in, so the panel falls back to state-wide.
+              focusedDistrict={
+                focusedDistrict ? `${selected ?? lastSelected.current}-${focusedDistrict}` : null
+              }
             />
           </>
         )}
