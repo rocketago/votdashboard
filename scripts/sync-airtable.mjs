@@ -1041,13 +1041,20 @@ async function syncEvents() {
       const time = EASTERN_TIME.format(instant)
       const meta = String(f['Location'] ?? '').trim()
       // An event targeting races in several states is listed in each, so it shows up
-      // for every organiser it concerns. Where the race matching this state names a
-      // House district specifically, the event carries that district too, so it can be
-      // filtered down to just that district's schedule as well as the state's.
+      // for every organiser it concerns. Every House district among the races naming
+      // this state comes along too, so the event is filterable down to each district's
+      // schedule as well as the state's — an event can target more than one district
+      // in the same state (a joint event for two neighbouring races, say).
       for (const state of states) {
-        const race = races.find((r) => stateOfRace(r) === state)
-        const district = race ? districtOfRace(race) : null
-        events.push({ date, time, state, district, title, meta, type })
+        const districts = [
+          ...new Set(
+            races
+              .filter((r) => stateOfRace(r) === state)
+              .map(districtOfRace)
+              .filter(Boolean),
+          ),
+        ]
+        events.push({ date, time, state, districts, title, meta, type })
       }
     }
   }
@@ -1063,7 +1070,7 @@ async function syncEvents() {
     .map(
       (e) =>
         `  { date: '${e.date}', time: ${JSON.stringify(e.time)}, state: '${e.state}', ` +
-        `district: ${e.district ? `'${e.district}'` : 'null'}, ` +
+        `districts: [${e.districts.map((d) => `'${d}'`).join(', ')}], ` +
         `title: ${JSON.stringify(e.title)}, meta: ${JSON.stringify(e.meta)}, type: '${e.type}' },`,
     )
     .join('\n')

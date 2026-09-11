@@ -41,9 +41,11 @@ export interface ProgramEvent {
    */
   time: string
   state: string
-  /** House district (e.g. `'OH-09'`) the matching Targeted Race names, or null for a
-   *  statewide/Senate race. */
-  district: string | null
+  /** House districts (e.g. `['OH-09']`) the matching Targeted Race entries name for
+   *  this state — empty when every race targeting this state is statewide/Senate. An
+   *  event can carry more than one when it targets several districts in the same
+   *  state (a joint tailgate for two neighbouring races, say). */
+  districts: string[]
   title: string
   /** Free-text location / turnout detail. May be empty. */
   meta: string
@@ -79,7 +81,7 @@ for (const list of Object.values(BY_STATE)) {
 export const eventsIn = (abbr: string): ProgramEvent[] => BY_STATE[abbr] ?? []
 
 const BY_DISTRICT = EVENTS.reduce<Record<string, ProgramEvent[]>>((acc, e) => {
-  if (e.district) (acc[e.district] ??= []).push(e)
+  for (const d of e.districts) (acc[d] ??= []).push(e)
   return acc
 }, {})
 
