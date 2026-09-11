@@ -20,37 +20,39 @@ export interface StateReport {
   pledge: number
   /** Students engaged. */
   students: number
+  /** Total events held. */
+  events: number
 }
 
 export const REPORTS: Record<string, StateReport> = {
-  AK: { reg: 0, pledge: 0, students: 0 },
-  AZ: { reg: 0, pledge: 0, students: 0 },
-  CA: { reg: 0, pledge: 0, students: 0 },
-  CO: { reg: 0, pledge: 0, students: 0 },
-  FL: { reg: 0, pledge: 0, students: 0 },
-  GA: { reg: 0, pledge: 0, students: 0 },
-  IA: { reg: 0, pledge: 0, students: 0 },
-  MA: { reg: 0, pledge: 0, students: 0 },
-  ME: { reg: 0, pledge: 0, students: 0 },
-  MI: { reg: 0, pledge: 0, students: 0 },
-  MT: { reg: 0, pledge: 0, students: 0 },
-  NC: { reg: 0, pledge: 0, students: 0 },
-  NE: { reg: 0, pledge: 0, students: 0 },
-  NH: { reg: 0, pledge: 0, students: 0 },
-  NJ: { reg: 0, pledge: 0, students: 0 },
-  NM: { reg: 0, pledge: 0, students: 0 },
-  NV: { reg: 0, pledge: 0, students: 0 },
-  NY: { reg: 0, pledge: 0, students: 0 },
-  OH: { reg: 0, pledge: 0, students: 0 },
-  PA: { reg: 0, pledge: 0, students: 0 },
-  SC: { reg: 0, pledge: 0, students: 0 },
-  TX: { reg: 0, pledge: 0, students: 0 },
-  VA: { reg: 0, pledge: 0, students: 0 },
-  WA: { reg: 0, pledge: 0, students: 0 },
-  WI: { reg: 0, pledge: 0, students: 0 },
+  AK: { reg: 0, pledge: 0, students: 0, events: 0 },
+  AZ: { reg: 0, pledge: 0, students: 0, events: 0 },
+  CA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  CO: { reg: 0, pledge: 0, students: 0, events: 0 },
+  FL: { reg: 0, pledge: 0, students: 0, events: 0 },
+  GA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  IA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  MA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  ME: { reg: 0, pledge: 0, students: 0, events: 0 },
+  MI: { reg: 0, pledge: 0, students: 0, events: 0 },
+  MT: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NC: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NE: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NH: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NJ: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NM: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NV: { reg: 0, pledge: 0, students: 0, events: 0 },
+  NY: { reg: 0, pledge: 0, students: 0, events: 0 },
+  OH: { reg: 0, pledge: 0, students: 0, events: 0 },
+  PA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  SC: { reg: 0, pledge: 0, students: 0, events: 0 },
+  TX: { reg: 0, pledge: 0, students: 0, events: 0 },
+  VA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  WA: { reg: 0, pledge: 0, students: 0, events: 0 },
+  WI: { reg: 0, pledge: 0, students: 0, events: 0 },
 }
 
-const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0 }
+const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0, events: 0 }
 
 /** Reported totals for a state, zeroed where the state does not report yet. */
 export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING

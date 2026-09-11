@@ -614,7 +614,7 @@ function StateOverlay({
 /* ---------------- running totals ---------------- */
 
 function StatsBar({ visibleStates }: { visibleStates: string[] }) {
-  const sum = (key: 'reg' | 'pledge' | 'students') =>
+  const sum = (key: 'reg' | 'pledge' | 'students' | 'events') =>
     visibleStates.reduce((total, abbr) => total + (STATES[abbr]?.[key] ?? 0), 0)
 
   const cells: [string, string | number][] = [
@@ -622,6 +622,7 @@ function StatsBar({ visibleStates }: { visibleStates: string[] }) {
     ['Voters registered', sum('reg').toLocaleString()],
     ['Pledges to vote', sum('pledge').toLocaleString()],
     ['Students engaged', sum('students').toLocaleString()],
+    ['Total events', sum('events').toLocaleString()],
   ]
 
   return (
