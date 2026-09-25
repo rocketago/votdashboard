@@ -60,7 +60,7 @@ const SOURCE = {
   dtc: {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     table: 'Distributed Count',
-    field: 'Number of DTC Attempts',
+    field: 'Number of DVC Attempts',
   },
 }
 
