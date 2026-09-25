@@ -69,6 +69,7 @@ function AddTarget() {
 const SPATIAL_VIEWS: { key: View; label: string }[] = [
   { key: 'map', label: 'Map' },
   { key: 'list', label: 'List' },
+  { key: 'stories', label: 'Stories' },
 ]
 
 const TEMPORAL_VIEWS: { key: View; label: string }[] = [{ key: 'cal', label: 'Event Calendar' }]

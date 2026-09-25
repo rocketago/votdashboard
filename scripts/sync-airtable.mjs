@@ -1032,29 +1032,35 @@ async function syncEvents() {
     if (!title) problems.push(`${record.id}: no Event Name`)
     else if (!when) problems.push(`${title}: no Date and Time`)
     else if (!type) problems.push(`${title}: unrecognised Event Type "${f['Event Type']}"`)
-    else if (!races.length) problems.push(`${title}: no Targeted Race, so no state to file it under`)
-    else if (!states.length)
-      problems.push(`${title}: Targeted Race ${JSON.stringify(races)} names no state`)
     else {
       const instant = new Date(when)
       const date = EASTERN_DAY.format(instant)
       const time = EASTERN_TIME.format(instant)
       const meta = String(f['Location'] ?? '').trim()
-      // An event targeting races in several states is listed in each, so it shows up
-      // for every organiser it concerns. Every House district among the races naming
-      // this state comes along too, so the event is filterable down to each district's
-      // schedule as well as the state's — an event can target more than one district
-      // in the same state (a joint event for two neighbouring races, say).
-      for (const state of states) {
-        const districts = [
-          ...new Set(
-            races
-              .filter((r) => stateOfRace(r) === state)
-              .map(districtOfRace)
-              .filter(Boolean),
-          ),
-        ]
-        events.push({ date, time, state, districts, title, meta, type })
+      if (!races.length) {
+        // No Targeted Race set — emit with the TBD sentinel so the event is not dropped.
+        // The calendar shows it to every viewer and labels the target "Target: TBD".
+        events.push({ date, time, state: 'TBD', districts: [], title, meta, type })
+      } else if (!states.length) {
+        // A race was named but we cannot map it to a state — that is a real data bug.
+        problems.push(`${title}: Targeted Race ${JSON.stringify(races)} names no state`)
+      } else {
+        // An event targeting races in several states is listed in each, so it shows up
+        // for every organiser it concerns. Every House district among the races naming
+        // this state comes along too, so the event is filterable down to each district's
+        // schedule as well as the state's — an event can target more than one district
+        // in the same state (a joint event for two neighbouring races, say).
+        for (const state of states) {
+          const districts = [
+            ...new Set(
+              races
+                .filter((r) => stateOfRace(r) === state)
+                .map(districtOfRace)
+                .filter(Boolean),
+            ),
+          ]
+          events.push({ date, time, state, districts, title, meta, type })
+        }
       }
     }
   }
