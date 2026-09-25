@@ -1,55 +1,175 @@
 /**
- * Story Bank data model.
+ * Story Bank — real-people testimonials tied to VOT organizing work.
  *
- * Future Airtable sync: source table is the EXISTING "Fellow Reports" table
- * in the VOT 2026 Soft Side Reports base (appwnA2eTd4GfxZWE, tbll3QFJsbGVvU4w0).
- * Sync mapping:
- *   - "Name" (singleLineText) → story.name
- *   - "What's one conversation with a voter that stood out this week?" (multilineText) → story.quote
- *   - "Where did this happen?" (singleLineText) → story.location
- *   - "Your State" (multipleRecordLinks) → story.scope.state (resolved to abbr)
- *   - Category is always fellow_report for rows sourced from this form.
+ * Scope model mirrors `quickFacts.ts` exactly so the sidebar filter tree, scope-chip
+ * components, and the `useScopeFilters`-style hook are all reusable without changes.
  *
- * Non-fellow categories (volunteer_story, campus_story, etc.) come from other sources
- * and do not carry a location field.
+ * Airtable sync
+ * -------------
+ * `stories.data.ts` is a GENERATED file, sourced from the Fellow Reports table
+ * (VOT 2026 Soft Side Reports base, appwnA2eTd4GfxZWE, table id tbll3QFJsbGVvU4w0).
+ * `scripts/sync-airtable.mjs` reads:
+ *   - `Name`                                                           → `name`
+ *   - `What's one conversation with a voter that stood out this week?` → `quote`
+ *   - `Where did this happen?`                                         → `location`
+ *   - `Your State` (linked)                                            → `scopes[0].state`
+ * Every synced story gets `category: 'fellow_report'`. Re-run `npm run sync` to refresh.
+ *
+ * The feed only ever holds two categories long-term: Fellows (this sync) and Field
+ * Organizers (a second sync, not yet built). No placeholder/sample content is shown —
+ * the feed is empty until a category has real synced stories.
  */
 
+import { TARGET_STATES, targetDistrictsIn } from './targets'
+
+export const NATIONAL = 'NATIONAL'
+
+/**
+ * Geographic scope for a story. Identical shape to `FactScope` in `quickFacts.ts` so
+ * the filter tree, chip rendering, and scope-key utilities share the same logic.
+ */
+export interface StoryScope {
+  /** State abbreviation, or `NATIONAL` for a story that applies everywhere. */
+  state: string
+  /** District numbers without the state prefix, e.g. `['07', '13']`. Empty = statewide. */
+  districts: string[]
+}
+
+/**
+ * Story category / type.
+ *
+ * Five types cover the range of voices VOT collects:
+ *   - `volunteer_story`  — a volunteer sharing their organizing experience
+ *   - `voter_story`      — a newly registered or engaged voter recounting their experience
+ *   - `campus_story`     — a campus chapter story, typically about a program milestone
+ *   - `organizer_story`  — a professional or chapter organizer's account
+ *   - `fellow_report`    — sourced from the Fellow Report form; always this category
+ *     regardless of the fellow's role, since the form doesn't ask
+ *
+ * Kept as a string union (not an enum) so a future Airtable "Category" select field maps
+ * directly: Airtable values are lowercased and underscored to match.
+ */
 export type StoryCategory =
   | 'volunteer_story'
+  | 'voter_story'
   | 'campus_story'
   | 'organizer_story'
-  | 'voter_story'
   | 'fellow_report'
 
 export const STORY_CATEGORY_LABEL: Record<StoryCategory, string> = {
   volunteer_story: 'Volunteer',
+  voter_story: 'Voter',
   campus_story: 'Campus',
   organizer_story: 'Organizer',
-  voter_story: 'Voter',
   fellow_report: 'Fellow',
 }
 
-export const STORY_CATEGORY_ORDER: readonly StoryCategory[] = [
-  'fellow_report',
-  'volunteer_story',
-  'campus_story',
-  'organizer_story',
-  'voter_story',
-] as const
-
-export interface StoryScope {
-  /** Two-letter state abbreviation. */
-  state: string
-}
-
 export interface Story {
-  id: string
+  /**
+   * Airtable record id — absent in hand-written placeholder data, populated by sync.
+   * The feed uses `name + quote` as a React key when this is absent.
+   */
+  airtableId?: string
+  /** Display name / attribution shown beneath the quote. "First L., City" or "Anonymous, State". */
   name: string
+  /** The testimonial text — a first-person quote or short narrative, unedited. */
   quote: string
-  scope: StoryScope
-  /** Freeform "Where did this happen?" text. Present on fellow_report stories; absent on others. */
+  /**
+   * Freeform "where this happened" text (e.g. "campus quad tabling table"), sourced from
+   * the Fellow Report form's "Where did this happen?" field. When present, the feed shows
+   * this on the story's chip instead of a district. `scopes` still carries the state (and
+   * district, where known) so sidebar filtering keeps working.
+   */
   location?: string
+  scopes: StoryScope[]
   category: StoryCategory
+  /**
+   * PLACEHOLDER — marks hand-written sample stories that have not been collected from
+   * real participants. Mirrors the `invented: true` convention used in `events.data.ts`.
+   * The feed renders a notice banner when any visible story carries this flag.
+   */
+  placeholder?: true
 }
 
-export { STORIES } from './stories.data'
+import { STORIES as ALL_STORIES } from './stories.data'
+
+/* ---------- board-scoping (mirrors quickFacts.ts scopedToBoard) ---------- */
+
+const ON_BOARD = new Set(TARGET_STATES)
+const targetDistricts = new Map(
+  TARGET_STATES.map((abbr) => [abbr, new Set(targetDistrictsIn(abbr).map((id) => id.slice(3)))]),
+)
+
+/**
+ * The same story, with any scope naming something off the target board removed.
+ * A story left with no scopes at all is dropped rather than shown as applying to nothing.
+ * National-scoped stories always pass.
+ */
+function scopedToBoard(story: Story): Story | null {
+  const scopes: StoryScope[] = []
+
+  for (const scope of story.scopes) {
+    if (scope.state === NATIONAL) {
+      scopes.push(scope)
+      continue
+    }
+    if (!ON_BOARD.has(scope.state)) continue
+    if (!scope.districts.length) {
+      scopes.push(scope)
+      continue
+    }
+
+    const targeted = targetDistricts.get(scope.state)
+    const districts = scope.districts.filter((d) => targeted?.has(d))
+    if (districts.length) scopes.push({ ...scope, districts })
+  }
+
+  return scopes.length ? { ...story, scopes } : null
+}
+
+export const STORIES: Story[] = ALL_STORIES.map(scopedToBoard).filter(
+  (s): s is Story => s !== null,
+)
+
+/* ---------- filter utilities (mirrors quickFacts.ts) ---------- */
+
+/** Filter key for one scope: `'NATIONAL'`, `'GA'` (statewide), or `'OH-13'`. */
+export function scopeKeys(story: Story): string[] {
+  return story.scopes.flatMap((s) => {
+    if (s.state === NATIONAL) return [NATIONAL]
+    if (!s.districts.length) return [s.state]
+    return s.districts.map((d) => `${s.state}-${d}`)
+  })
+}
+
+export interface ScopeIndex {
+  /** States that appear in the feed, sorted. */
+  states: string[]
+  /** Per state: whether a statewide story exists, and which districts appear. */
+  byState: Record<string, { statewide: boolean; districts: string[] }>
+  hasNational: boolean
+}
+
+/** Builds the sidebar's filter tree from whatever is in the feed. */
+export function buildScopeIndex(stories: Story[]): ScopeIndex {
+  const byState: ScopeIndex['byState'] = {}
+  let hasNational = false
+
+  for (const story of stories) {
+    for (const s of story.scopes) {
+      if (s.state === NATIONAL) {
+        hasNational = true
+        continue
+      }
+      const entry = (byState[s.state] ??= { statewide: false, districts: [] })
+      if (!s.districts.length) entry.statewide = true
+      for (const d of s.districts) {
+        if (!entry.districts.includes(d)) entry.districts.push(d)
+      }
+    }
+  }
+
+  for (const entry of Object.values(byState)) entry.districts.sort()
+
+  return { states: Object.keys(byState).sort(), byState, hasNational }
+}

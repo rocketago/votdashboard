@@ -1,66 +1,59 @@
-import { useState } from 'react'
-import {
-  STORIES,
-  STORY_CATEGORY_LABEL,
-  STORY_CATEGORY_ORDER,
-  type Story,
-  type StoryCategory,
-} from '../../data/stories'
+import { useMemo } from 'react'
+import { NATIONAL, STORIES, STORY_CATEGORY_LABEL, scopeKeys, type Story } from '../../data/stories'
 
 interface Props {
+  checked: Record<string, boolean>
+  isVisible: (abbr: string) => boolean
   onOpenState: (abbr: string) => void
 }
 
-export function StoryBankView({ onOpenState }: Props) {
-  const [activeCategories, setActiveCategories] = useState<Set<StoryCategory>>(
-    new Set(STORY_CATEGORY_ORDER),
+export function StoryBankView({ checked, isVisible, onOpenState }: Props) {
+  const hasPlaceholders = STORIES.some((s) => s.placeholder)
+
+  const items = useMemo(
+    () =>
+      STORIES.filter((story) => {
+        // A story shows if any scope it covers is checked...
+        if (!scopeKeys(story).some((key) => checked[key])) return false
+
+        // ...and if at least one of its states is still on the board.
+        // National-only stories always pass.
+        const states = story.scopes.filter((s) => s.state !== NATIONAL)
+        return states.length === 0 || states.some((s) => isVisible(s.state))
+      }),
+    [checked, isVisible],
   )
 
-  const toggle = (cat: StoryCategory) => {
-    setActiveCategories((prev) => {
-      const next = new Set(prev)
-      if (next.has(cat)) {
-        next.delete(cat)
-      } else {
-        next.add(cat)
-      }
-      return next
-    })
-  }
-
-  const visible = STORIES.filter((s) => activeCategories.has(s.category))
-
   return (
-    <div className="storywrap">
-      <div className="storyhead">
+    <div className="factwrap">
+      <div className="fhead">
         <h2>Story Bank</h2>
         <p>
-          Field conversations and fellow reports from across the program. Use these to ground
-          messaging in real voter contact.
+          Real voices from the organizing program. Stories are scoped to the states and
+          districts where they were collected — use the sidebar to filter by location.
         </p>
       </div>
 
-      <div className="story-filters">
-        {STORY_CATEGORY_ORDER.map((cat) => {
-          const on = activeCategories.has(cat)
-          return (
-            <button
-              key={cat}
-              className={`story-cat-btn${on ? ' active' : ''}`}
-              onClick={() => toggle(cat)}
-            >
-              {STORY_CATEGORY_LABEL[cat]}
-            </button>
-          )
-        })}
-      </div>
+      {hasPlaceholders && (
+        <div className="factnote">
+          Placeholder stories. These are sample entries written during the design session
+          and have not been collected from real participants. Replace with real testimonials
+          before the tab goes live.
+        </div>
+      )}
 
-      <div className="story-feed">
-        {visible.length === 0 ? (
-          <p className="empty">No stories match the current filters.</p>
+      <div className="feed">
+        {items.length === 0 ? (
+          <div className="item">
+            <p className="empty">No stories match the current filters.</p>
+          </div>
         ) : (
-          visible.map((story) => (
-            <StoryItem key={story.id} story={story} onOpenState={onOpenState} />
+          items.map((story) => (
+            <StoryItem
+              key={story.airtableId ?? `${story.name}:${story.quote.slice(0, 40)}`}
+              story={story}
+              onOpenState={onOpenState}
+            />
           ))
         )}
       </div>
@@ -76,20 +69,44 @@ function StoryItem({
   onOpenState: (abbr: string) => void
 }) {
   return (
-    <div className="story-item">
+    <div className="item">
       <div className="scope">
-        {story.location ? (
-          <button onClick={() => onOpenState(story.scope.state)}>{story.location}</button>
-        ) : (
-          <button onClick={() => onOpenState(story.scope.state)}>
-            {story.scope.state} statewide
-          </button>
-        )}
+        {story.scopes.map((scope) => {
+          if (scope.state === NATIONAL) {
+            return (
+              <button className="nat" key="nat" disabled>
+                NATIONAL
+              </button>
+            )
+          }
+
+          if (story.location) {
+            return (
+              <button key={scope.state} onClick={() => onOpenState(scope.state)}>
+                {story.location}
+              </button>
+            )
+          }
+
+          if (!scope.districts.length) {
+            return (
+              <button key={scope.state} onClick={() => onOpenState(scope.state)}>
+                {scope.state} statewide
+              </button>
+            )
+          }
+
+          return scope.districts.map((d) => (
+            <button key={`${scope.state}-${d}`} onClick={() => onOpenState(scope.state)}>
+              {scope.state}-{d}
+            </button>
+          ))
+        })}
         <span className="topic">{STORY_CATEGORY_LABEL[story.category]}</span>
       </div>
 
-      <blockquote className="story-quote">{story.quote}</blockquote>
-      <p className="story-attribution">{story.name}</p>
+      <h3>{story.quote}</h3>
+      <p className="story-attribution">— {story.name}</p>
     </div>
   )
 }

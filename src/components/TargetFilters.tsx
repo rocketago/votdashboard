@@ -1,5 +1,6 @@
 import { TARGET_ORDER, TIER } from '../data/tiers'
 import type { TargetFilters as Filters } from '../hooks/useTargetFilters'
+import { PollsCountdown } from './PollsCountdown'
 
 /**
  * The map sidebar. These filters are shared by both tabs, so unchecking Development
@@ -8,6 +9,8 @@ import type { TargetFilters as Filters } from '../hooks/useTargetFilters'
 export function TargetFilters({ filters, setFilter, setAll }: Filters) {
   return (
     <aside className="filters">
+      <PollsCountdown />
+
       <div className="fgroup">
         <h3>Target type</h3>
         {TARGET_ORDER.map((key) => (

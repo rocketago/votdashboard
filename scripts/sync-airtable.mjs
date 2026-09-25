@@ -48,6 +48,10 @@ const SOURCE = {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     table: 'Event Tracker (Org-Wide)',
   },
+  stories: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    table: 'Fellow Reports',
+  },
   targets: {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
     states: 'States',
@@ -342,6 +346,7 @@ const ZIP_PLACE = {
   '20052': [38.9101, -77.0286],
   '23668': [37.0218, -76.3366],
   '23875': [37.2359, -77.285],
+  '29307': [34.9792, -81.8645],
   '32801': [28.5433, -81.3768],
   '30303': [33.7539, -84.3898],
   '30332': [33.7747, -84.3947],
@@ -353,6 +358,7 @@ const ZIP_PLACE = {
   '33620': [28.0628, -82.4137],
   '34243': [27.4031, -82.5221],
   '47405': [39.1681, -86.5194],
+  '78705': [30.2922, -97.7389],
   '90024': [34.0614, -118.4439],
   '90650': [33.9063, -118.0886],
   '94720': [37.8732, -122.2571],
@@ -666,6 +672,7 @@ async function syncReports() {
         reg: number(record.fields['Total Voter Reg']),
         pledge: number(record.fields['Total Pledges']),
         students: number(record.fields['Total Students Engaged']),
+        events: number(record.fields['Total Events']),
       })
   }
 
@@ -676,7 +683,7 @@ async function syncReports() {
   const rowsOut = reports
     .map(
       (r) =>
-        `  ${r.abbr}: { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students} },`,
+        `  ${r.abbr}: { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students}, events: ${r.events} },`,
     )
     .join('\n')
 
@@ -702,18 +709,91 @@ export interface StateReport {
   pledge: number
   /** Students engaged. */
   students: number
+  /** Total events held. */
+  events: number
 }
 
 export const REPORTS: Record<string, StateReport> = {
 ${rowsOut}
 }
 
-const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0 }
+const NOTHING: StateReport = { reg: 0, pledge: 0, students: 0, events: 0 }
 
 /** Reported totals for a state, zeroed where the state does not report yet. */
 export const reportFor = (abbr: string): StateReport => REPORTS[abbr] ?? NOTHING
 `,
     `${reports.length} states reporting (${reported} with a non-zero total)`,
+  )
+}
+
+/**
+ * The same `Total Voter Reg` / `Total Pledges` / `Total Students Engaged` rollups as
+ * `syncReports()`, but read off the Districts table instead of States — one program-
+ * to-date reading per House district (`OH-09`, `AK-00`, ...) rather than per state.
+ */
+async function syncDistrictReports() {
+  const { base, districts: table } = SOURCE.targets
+  const rows = await allRecords(base, table)
+  const reports = []
+  const problems = []
+
+  const number = (v) => (typeof v === 'number' ? v : Number(v ?? 0) || 0)
+
+  for (const record of rows) {
+    // Same AK-AL -> AK-00 fix as syncTargets(), so ids match targets.data.ts exactly.
+    const id = String(record.fields['District Name'] ?? '').trim().replace(/-AL$/, '-00')
+    if (!id) continue
+    if (!/^[A-Z]{2}-\d{2}$/.test(id)) {
+      problems.push(`district "${id}" is not a state and number`)
+      continue
+    }
+
+    reports.push({
+      id,
+      reg: number(record.fields['Total Voter Reg']),
+      pledge: number(record.fields['Total Pledges']),
+      students: number(record.fields['Total Students Engaged']),
+    })
+  }
+
+  if (problems.length) fail('district report', problems)
+
+  reports.sort((a, b) => a.id.localeCompare(b.id))
+
+  const rowsOut = reports
+    .map((r) => `  '${r.id}': { reg: ${r.reg}, pledge: ${r.pledge}, students: ${r.students} },`)
+    .join('\n')
+
+  const reported = reports.filter((r) => r.reg || r.pledge || r.students).length
+
+  emit(
+    'districtReports.ts',
+    HEADER(
+      'the "Districts" table in the VOT 2026 Soft Side Reports base',
+      ` * Per-district program-to-date numbers — the same shape as reports.ts (states), keyed
+ * by district id instead. A district absent here reports zero, same convention as
+ * reports.ts: not on the reporting board yet, not the same as having done nothing.`,
+    ) +
+      `
+export interface DistrictReport {
+  /** Voter registration forms collected. */
+  reg: number
+  /** Pledges to vote collected. */
+  pledge: number
+  /** Students engaged. */
+  students: number
+}
+
+export const DISTRICT_REPORTS: Record<string, DistrictReport> = {
+${rowsOut}
+}
+
+const NOTHING: DistrictReport = { reg: 0, pledge: 0, students: 0 }
+
+/** Reported totals for a district, zeroed where the district does not report yet. */
+export const districtReportFor = (id: string): DistrictReport => DISTRICT_REPORTS[id] ?? NOTHING
+`,
+    `${reports.length} districts reporting (${reported} with a non-zero total)`,
   )
 }
 
@@ -919,6 +999,18 @@ function stateOfRace(race) {
   return prefixed ? prefixed[1] : (NAME_TO_ABBR[text] ?? null)
 }
 
+/**
+ * The House district a targeted race belongs to, or null for a statewide/Senate race
+ * ("Ohio", "OH-Sen"). Same AK-AL -> AK-00 normalization as syncTargets().
+ */
+function districtOfRace(race) {
+  const text = String(race ?? '').trim()
+  const m = text.match(/^([A-Z]{2})-(\d{2}|AL)$/)
+  if (!m) return null
+  const [, state, suffix] = m
+  return suffix === 'AL' ? `${state}-00` : `${state}-${suffix}`
+}
+
 async function syncEvents() {
   const rows = await allRecords(SOURCE.events.base, SOURCE.events.table)
   const events = []
@@ -948,14 +1040,27 @@ async function syncEvents() {
       if (!races.length) {
         // No Targeted Race set — emit with the TBD sentinel so the event is not dropped.
         // The calendar shows it to every viewer and labels the target "Target: TBD".
-        events.push({ date, time, state: 'TBD', title, meta, type })
+        events.push({ date, time, state: 'TBD', districts: [], title, meta, type })
       } else if (!states.length) {
         // A race was named but we cannot map it to a state — that is a real data bug.
         problems.push(`${title}: Targeted Race ${JSON.stringify(races)} names no state`)
       } else {
         // An event targeting races in several states is listed in each, so it shows up
-        // for every organiser it concerns.
-        for (const state of states) events.push({ date, time, state, title, meta, type })
+        // for every organiser it concerns. Every House district among the races naming
+        // this state comes along too, so the event is filterable down to each district's
+        // schedule as well as the state's — an event can target more than one district
+        // in the same state (a joint event for two neighbouring races, say).
+        for (const state of states) {
+          const districts = [
+            ...new Set(
+              races
+                .filter((r) => stateOfRace(r) === state)
+                .map(districtOfRace)
+                .filter(Boolean),
+            ),
+          ]
+          events.push({ date, time, state, districts, title, meta, type })
+        }
       }
     }
   }
@@ -971,6 +1076,7 @@ async function syncEvents() {
     .map(
       (e) =>
         `  { date: '${e.date}', time: ${JSON.stringify(e.time)}, state: '${e.state}', ` +
+        `districts: [${e.districts.map((d) => `'${d}'`).join(', ')}], ` +
         `title: ${JSON.stringify(e.title)}, meta: ${JSON.stringify(e.meta)}, type: '${e.type}' },`,
     )
     .join('\n')
@@ -999,15 +1105,100 @@ export const EVENTS: ProgramEvent[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
   )
 }
 
+/* ---------------- fellow report stories ---------------- */
+
+async function syncStories() {
+  const { base, table } = SOURCE.stories
+  const [rows, stateRows] = await Promise.all([
+    allRecords(base, table),
+    allRecords(base, SOURCE.reports.table),
+  ])
+
+  // Build a map from Airtable state record id → USPS abbreviation, same join pattern
+  // as syncCampuses() uses for Districts.
+  const stateAbbr = new Map(
+    stateRows.map((s) => [
+      s.id,
+      NAME_TO_ABBR[String(s.fields['State'] ?? '').trim()] ?? null,
+    ]),
+  )
+
+  const stories = []
+  const problems = []
+
+  for (const record of rows) {
+    const f = record.fields
+
+    // Airtable omits empty fields, so a blank row arrives as {}. The Fellow Reports
+    // table currently has one such placeholder row — skip it rather than failing.
+    if (!Object.keys(f).length) continue
+
+    const name = String(f['Name'] ?? '').trim()
+
+    // A fellow submitted the form without filling in their name. That's a real gap in
+    // the response, not a broken sync — warn and drop the record rather than failing
+    // the whole sync over one incomplete submission.
+    if (!name) {
+      console.warn(`[sync] story ${record.id} has no Name — skipping`)
+      continue
+    }
+
+    const quote = String(f["What's one conversation with a voter that stood out this week?"] ?? '').trim()
+    const location = String(f['Where did this happen?'] ?? '').trim()
+    const stateLinks = f['Your State'] ?? []
+    const abbr = stateLinks.length ? stateAbbr.get(stateLinks[0]) : null
+
+    if (!quote) problems.push(`${name}: no quote`)
+    else if (!location) problems.push(`${name}: no location`)
+    else if (!stateLinks.length) problems.push(`${name}: no Your State link`)
+    else if (!abbr) problems.push(`${name}: Your State link does not resolve to a known state`)
+    else stories.push({ name, quote, location, state: abbr })
+  }
+
+  if (problems.length) fail('story', problems)
+
+  stories.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name))
+
+  const rowsOut = stories
+    .map(
+      (s) =>
+        `  { name: ${JSON.stringify(s.name)}, quote: ${JSON.stringify(s.quote)}, ` +
+        `location: ${JSON.stringify(s.location)}, ` +
+        `scopes: [{ state: '${s.state}', districts: [] }], category: 'fellow_report' },`,
+    )
+    .join('\n')
+
+  emit(
+    'stories.data.ts',
+    HEADER(
+      'the "Fellow Reports" table in the VOT 2026 Soft Side Reports base',
+      ` * Real fellow-report stories, sourced from the Fellow Reports form. Every story
+ * sourced from this form gets \`category: 'fellow_report'\` — the form does not
+ * ask about the fellow's role, so no finer category is assigned.
+ *
+ * Placeholder sample stories (volunteer, voter, campus, organizer) live in
+ * \`stories.sample.ts\` and are merged in by \`stories.ts\` alongside this list.`,
+    ) +
+      `
+import type { Story } from './stories'
+
+export const STORIES: Story[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
+`,
+    `${stories.length} fellow report stories`,
+  )
+}
+
 /**
  * A row that cannot be mapped would be dropped from a list the dashboard presents as
  * complete, so it is worth stopping over rather than quietly shipping a short one.
+ *
+ * Throws instead of exiting so callers can catch per-sync and continue the sequence.
  */
 function fail(what, problems) {
   console.error(`\n${problems.length} ${what} record(s) could not be mapped:\n`)
   for (const p of problems) console.error(`  ${p}`)
   console.error('\nFix them in Airtable, or extend the tables in this script.')
-  process.exit(1)
+  throw new Error(`${what} sync failed: ${problems.length} unmapped record(s)`)
 }
 
 if (has('geocode-zips')) {
@@ -1015,8 +1206,30 @@ if (has('geocode-zips')) {
   process.exit(0)
 }
 
-await syncChapters()
-await syncCampuses()
-await syncTargets()
-await syncReports()
-await syncEvents()
+// Run every sync independently. A failure in one should not prevent the others
+// from updating their output files — the run still exits non-zero (so the GitHub
+// Actions job shows red and fix_1 alerting fires), but only after every sync has
+// had its chance to succeed.
+const syncErrors = []
+
+for (const [name, fn] of [
+  ['chapters', syncChapters],
+  ['campuses', syncCampuses],
+  ['targets', syncTargets],
+  ['reports', syncReports],
+  ['districtReports', syncDistrictReports],
+  ['events', syncEvents],
+  ['stories', syncStories],
+]) {
+  try {
+    await fn()
+  } catch (err) {
+    console.error(`\n[sync] ${name} failed — continuing with remaining syncs\n  ${err.message}`)
+    syncErrors.push(name)
+  }
+}
+
+if (syncErrors.length) {
+  console.error(`\n[sync] ${syncErrors.length} sync(s) failed: ${syncErrors.join(', ')}`)
+  process.exit(1)
+}
