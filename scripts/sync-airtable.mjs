@@ -59,7 +59,7 @@ const SOURCE = {
   },
   dtc: {
     base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
-    table: 'Hard-Side Distributed',
+    table: 'Distributed Count',
     field: 'Number of DTC Attempts',
   },
 }
@@ -1231,6 +1231,19 @@ async function syncDtc() {
   }
 
   if (skipped) console.warn(`[sync] dtc: ${skipped} row(s) skipped (blank or non-numeric)`)
+
+  // If no row carried the expected field, surface what fields are actually present so a
+  // field-name mismatch is obvious in the Actions log rather than silently summing to 0.
+  if (total === 0 && rows.length > 0) {
+    const firstNonBlank = rows.find((r) => Object.keys(r.fields).length > 0)
+    if (firstNonBlank) {
+      const present = Object.keys(firstNonBlank.fields).join(', ')
+      console.warn(
+        `[sync] dtc: total is 0 across ${rows.length} rows — ` +
+          `field "${field}" may be misnamed. Fields on first non-blank record: ${present}`,
+      )
+    }
+  }
 
   emit(
     'dtc.data.ts',
