@@ -18,6 +18,7 @@ import {
 import { useElementSize } from '../../hooks/useElementSize'
 import type { TargetFilters } from '../../hooks/useTargetFilters'
 import { StripePatterns, stripeFill } from './stripes'
+import { orgWideDtcAttempts } from '../../data/dtc.data'
 
 /** States too small to carry a centroid label without colliding with their neighbours. */
 const SMALL = new Set(['RI', 'DE', 'DC', 'CT', 'NJ', 'MD', 'MA', 'NH', 'VT'])
@@ -627,12 +628,22 @@ function StatsBar({ visibleStates }: { visibleStates: string[] }) {
   const sum = (key: 'reg' | 'pledge' | 'students' | 'events') =>
     visibleStates.reduce((total, abbr) => total + (STATES[abbr]?.[key] ?? 0), 0)
 
+  /**
+   * Org-wide students engaged total — intentionally uses ALL states, not visibleStates.
+   * Combined with orgWideDtcAttempts to produce a unified DTC figure that represents
+   * the full organisation regardless of which target filter is active.
+   */
+  const orgWideStudents = Object.values(STATES).reduce((total, s) => total + s.students, 0)
+
   const cells: [string, string | number][] = [
     ['Target states', visibleStates.length],
     ['Voters registered', sum('reg').toLocaleString()],
     ['Pledges to vote', sum('pledge').toLocaleString()],
     ['Students engaged', sum('students').toLocaleString()],
     ['Total events', sum('events').toLocaleString()],
+    // Org-wide by design: not filtered by visibleStates. Students engaged (all states)
+    // plus DTC attempts from the Hard-Side Distributed table.
+    ['Total DTCs', (orgWideStudents + orgWideDtcAttempts).toLocaleString()],
   ]
 
   return (

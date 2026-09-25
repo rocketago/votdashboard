@@ -57,6 +57,11 @@ const SOURCE = {
     states: 'States',
     districts: 'Districts',
   },
+  dtc: {
+    base: process.env['AIRTABLE_REPORTS_BASE'] ?? 'appwnA2eTd4GfxZWE',
+    table: 'Hard-Side Distributed',
+    field: 'Number of DTC Attempts',
+  },
 }
 
 /* ---------------- token ---------------- */
@@ -1188,6 +1193,61 @@ export const STORIES: Story[] = [${rowsOut ? `\n${rowsOut}\n` : ''}]
   )
 }
 
+/* ---------------- DTC attempts ---------------- */
+
+/**
+ * Sums "Number of DTC Attempts" across the entire "Hard-Side Distributed" table.
+ *
+ * Every row is included regardless of state, making this an org-wide total — not
+ * filtered by target board. Blank or non-numeric cells are warned and skipped; fully
+ * empty placeholder rows (no fields) are silently skipped.
+ */
+async function syncDtc() {
+  const { base, table, field } = SOURCE.dtc
+  const rows = await allRecords(base, table)
+  let total = 0
+  let skipped = 0
+
+  for (const record of rows) {
+    const f = record.fields
+
+    // Blank placeholder rows carry no fields at all — skip silently.
+    if (!Object.keys(f).length) continue
+
+    const raw = f[field]
+    if (raw === undefined || raw === null || raw === '') {
+      skipped++
+      continue
+    }
+
+    const n = typeof raw === 'number' ? raw : Number(raw)
+    if (!Number.isFinite(n)) {
+      console.warn(`[sync] dtc ${record.id}: "${field}" = ${JSON.stringify(raw)} is not numeric — skipping`)
+      skipped++
+      continue
+    }
+
+    total += n
+  }
+
+  if (skipped) console.warn(`[sync] dtc: ${skipped} row(s) skipped (blank or non-numeric)`)
+
+  emit(
+    'dtc.data.ts',
+    HEADER(
+      `the "${table}" table in the VOT 2026 Soft Side Reports base`,
+      ` * Org-wide total DTC (door-to-contact) attempts. This is a straight sum of
+ * "${field}" across every row — not filtered by state or target type —
+ * so it is always an organisation-wide figure, not a target-board subset.`,
+    ) +
+      `
+/** Org-wide total of "${field}" across all Hard-Side Distributed rows. */
+export const orgWideDtcAttempts: number = ${total}
+`,
+    `${rows.length} rows, total DTC attempts = ${total}${skipped ? ` (${skipped} skipped)` : ''}`,
+  )
+}
+
 /**
  * A row that cannot be mapped would be dropped from a list the dashboard presents as
  * complete, so it is worth stopping over rather than quietly shipping a short one.
@@ -1220,6 +1280,7 @@ for (const [name, fn] of [
   ['districtReports', syncDistrictReports],
   ['events', syncEvents],
   ['stories', syncStories],
+  ['dtc', syncDtc],
 ]) {
   try {
     await fn()
