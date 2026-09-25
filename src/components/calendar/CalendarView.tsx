@@ -3,6 +3,7 @@ import {
   EVENTS,
   PROGRAM_TYPE,
   PROGRAM_TYPE_ORDER,
+  TBD_STATE,
   eventDate,
   eventMonths,
   isElectionDay,
@@ -27,7 +28,9 @@ interface Props {
 
 export function CalendarView({ programFilters, isVisible, onOpenState }: Props) {
   const shown = useMemo(
-    () => EVENTS.filter((e) => programFilters[e.type] && isVisible(e.state)),
+    // TBD events (no Targeted Race in Airtable) bypass the state filter — they are
+    // relevant to every viewer and must always appear.
+    () => EVENTS.filter((e) => programFilters[e.type] && (e.state === TBD_STATE || isVisible(e.state))),
     [programFilters, isVisible],
   )
 
@@ -47,7 +50,8 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
     return map
   }, [shown])
 
-  const stateCount = new Set(shown.map((e) => e.state)).size
+  // Exclude TBD from the state count — it is a sentinel, not a real state.
+  const stateCount = new Set(shown.filter((e) => e.state !== TBD_STATE).map((e) => e.state)).size
 
   return (
     <div className="calwrap">
@@ -142,11 +146,12 @@ function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
                   className="evc"
                   style={{ borderLeftColor: PROGRAM_TYPE[e.type].color }}
                   // The title is clamped to two lines, so the full text lives here.
-                  title={`${e.title} · ${PROGRAM_TYPE[e.type].label}${e.meta ? ` · ${e.meta}` : ''}`}
-                  onClick={() => onOpenState(e.state)}
+                  title={`${e.title} · ${PROGRAM_TYPE[e.type].label}${e.state === TBD_STATE ? ' · Target: TBD' : ''}${e.meta ? ` · ${e.meta}` : ''}`}
+                  // TBD events have no state to navigate to — clicking them is a no-op.
+                  onClick={e.state !== TBD_STATE ? () => onOpenState(e.state) : undefined}
                 >
                   <span className="evwhen">
-                    <span className="st">{e.state}</span>
+                    <span className="st">{e.state === TBD_STATE ? 'Target: TBD' : e.state}</span>
                     <span className="tm">{e.time}</span>
                   </span>
                   <span className="tt">{e.title}</span>

@@ -30,6 +30,13 @@ export const PROGRAM_TYPE: Record<ProgramType, ProgramTypeSpec> = {
 /** Filter order in the sidebar and the legend. */
 export const PROGRAM_TYPE_ORDER: readonly ProgramType[] = ['hip', 'hd', 'sip', 'sd'] as const
 
+/**
+ * Sentinel state value for events whose Targeted Race field is blank in Airtable.
+ * The calendar shows these to every viewer regardless of the state filter, and
+ * renders the target as "Target: TBD".
+ */
+export const TBD_STATE = 'TBD'
+
 export interface ProgramEvent {
   /** ISO `YYYY-MM-DD`, Eastern. The calendar derives its month range from these. */
   date: string
@@ -40,6 +47,10 @@ export interface ProgramEvent {
    * dashboard is opened. Nothing here re-interprets it against the reader's clock.
    */
   time: string
+  /**
+   * Two-letter state abbreviation, or `TBD_STATE` when no Targeted Race was set.
+   * Components must treat `TBD_STATE` as "show everywhere, target unknown."
+   */
   state: string
   title: string
   /** Free-text location / turnout detail. May be empty. */
