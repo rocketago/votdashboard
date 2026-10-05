@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   EVENTS,
   PROGRAM_TYPE,
@@ -10,6 +10,15 @@ import {
   type ProgramEvent,
   type ProgramType,
 } from '../../data/events'
+
+function todayET(): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+  }).formatToParts(new Date())
+  const get = (type: string) => Number(parts.find(p => p.type === type)!.value)
+  return { year: get('year'), month: get('month') - 1, day: get('day') }
+}
 
 /** The Airtable form behind the Event Tracker the calendar is synced from. */
 const ADD_EVENT_FORM = 'https://airtable.com/appwnA2eTd4GfxZWE/pagcLZHL8gA5GPxON/form'
@@ -27,6 +36,8 @@ interface Props {
 }
 
 export function CalendarView({ programFilters, isVisible, onOpenState }: Props) {
+  const today = useMemo(() => todayET(), [])
+
   const shown = useMemo(
     // TBD events (no Targeted Race in Airtable) bypass the state filter — they are
     // relevant to every viewer and must always appear.
@@ -37,6 +48,12 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
   // Months come from the full event set, not the filtered one, so the calendar keeps
   // its shape as filters are toggled instead of collapsing month by month.
   const months = useMemo(() => eventMonths(EVENTS), [])
+
+  // Scroll the current month (or first future month, if current isn't in the list) into
+  // view on mount. scrollIntoView fires immediately — no layout jank.
+  const scrollTargetRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) node.scrollIntoView({ block: 'start', behavior: 'auto' })
+  }, [])
 
   const byDay = useMemo(() => {
     const map = new Map<string, ProgramEvent[]>()
@@ -76,15 +93,29 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
         </p>
       )}
 
-      {months.map(({ year, month }) => (
-        <MonthGrid
-          key={`${year}-${month}`}
-          year={year}
-          month={month}
-          byDay={byDay}
-          onOpenState={onOpenState}
-        />
-      ))}
+      {(() => {
+        // Find the scroll target: current month if present, otherwise first future month.
+        const scrollTarget = months.find(
+          m => m.year === today.year && m.month === today.month,
+        ) ?? months.find(
+          m => m.year > today.year || (m.year === today.year && m.month > today.month),
+        )
+        return months.map(({ year, month }) => (
+          <MonthGrid
+            key={`${year}-${month}`}
+            year={year}
+            month={month}
+            today={today}
+            byDay={byDay}
+            onOpenState={onOpenState}
+            scrollRef={
+              scrollTarget && year === scrollTarget.year && month === scrollTarget.month
+                ? scrollTargetRef
+                : undefined
+            }
+          />
+        ))
+      })()}
 
       <div className="callegend">
         {PROGRAM_TYPE_ORDER.map((type) => (
@@ -101,17 +132,22 @@ export function CalendarView({ programFilters, isVisible, onOpenState }: Props) 
 interface MonthProps {
   year: number
   month: number
+  today: { year: number; month: number; day: number }
   byDay: Map<string, ProgramEvent[]>
   onOpenState: (abbr: string) => void
+  scrollRef?: (node: HTMLDivElement | null) => void
 }
 
-function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
+function MonthGrid({ year, month, today, byDay, onOpenState, scrollRef }: MonthProps) {
   const firstWeekday = new Date(year, month, 1).getDay()
   const dayCount = new Date(year, month + 1, 0).getDate()
   const trailing = (firstWeekday + dayCount) % 7
 
+  const isPastMonth = year < today.year || (year === today.year && month < today.month)
+  const isCurrentMonth = year === today.year && month === today.month
+
   return (
-    <div className="month">
+    <div className={`month${isPastMonth ? ' past' : ''}`} ref={scrollRef}>
       <h3>
         {MONTH_NAME[month]} {year}
       </h3>
@@ -129,13 +165,14 @@ function MonthGrid({ year, month, byDay, onOpenState }: MonthProps) {
 
         {Array.from({ length: dayCount }, (_, i) => {
           const day = i + 1
+          const isPastDay = isPastMonth || (isCurrentMonth && day < today.day)
           const events = byDay.get(`${year}-${month}-${day}`) ?? []
           const election = isElectionDay(year, month, day)
           return (
             <div
               className={`cell${events.length ? ' has' : ''}${
                 events.length > 1 ? ' multi' : ''
-              }${election ? ' election' : ''}`}
+              }${election ? ' election' : ''}${isPastDay ? ' past' : ''}`}
               key={day}
             >
               <span className="n">{day}</span>
