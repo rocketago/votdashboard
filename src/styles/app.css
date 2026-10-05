@@ -284,6 +284,13 @@ svg#map { display: block; width: 100%; height: 100% }
 
 /* Election day. Deliberately not one of the four programme colours, which are all
    spoken for in the legend and would read as a programme type. */
+/* Past day cells — dimmed but still readable and clickable. */
+.cell.past { opacity: .38 }
+/* Past day cells that have events keep the number legible at the reduced opacity. */
+.cell.past.has .n { color: var(--fg-2) }
+/* Past month header fades to match. */
+.month.past h3 { opacity: .45 }
+
 .cell.election { background: rgba(238, 242, 247, .07); box-shadow: inset 0 0 0 1px var(--fg-2) }
 .cell.election .n { color: var(--fg); font-weight: 700 }
 .eday {
