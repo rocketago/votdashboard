@@ -14,4 +14,6 @@
 
 import type { Story } from './stories'
 
-export const STORIES: Story[] = []
+export const STORIES: Story[] = [
+  { name: "Schaler Starks", quote: "One voter said they did not feel fulfilled working in healthcare due to the issues in accessibility by immigrant residents and uninsured patients.", location: "University of Iowa Campus, Tailgates", scopes: [{ state: 'IA', districts: [] }], category: 'fellow_report' },
+]
