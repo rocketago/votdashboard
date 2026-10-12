@@ -10,4 +10,4 @@
  */
 
 /** Org-wide total of "Number of DVC Attempts" across all Hard-Side Distributed rows. */
-export const orgWideDtcAttempts: number = 354675
+export const orgWideDtcAttempts: number = 364540
