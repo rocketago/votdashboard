@@ -47,7 +47,7 @@ export const REPORTS: Record<string, StateReport> = {
   PA: { reg: 51, pledge: 3, students: 0, events: 0 },
   SC: { reg: 226, pledge: 1, students: 0, events: 0 },
   TX: { reg: 5, pledge: 1, students: 0, events: 0 },
-  VA: { reg: 220, pledge: 1, students: 0, events: 0 },
+  VA: { reg: 220, pledge: 7, students: 300, events: 0 },
   WA: { reg: 0, pledge: 0, students: 0, events: 0 },
   WI: { reg: 0, pledge: 0, students: 0, events: 0 },
 }
