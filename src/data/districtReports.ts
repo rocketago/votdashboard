@@ -52,7 +52,7 @@ export const DISTRICT_REPORTS: Record<string, DistrictReport> = {
   'TX-15': { reg: 0, pledge: 0, students: 0 },
   'VA-01': { reg: 0, pledge: 0, students: 0 },
   'VA-02': { reg: 0, pledge: 0, students: 0 },
-  'VA-05': { reg: 1, pledge: 61, students: 0 },
+  'VA-05': { reg: 23, pledge: 75, students: 0 },
   'WA-03': { reg: 0, pledge: 0, students: 0 },
   'WI-01': { reg: 0, pledge: 0, students: 0 },
   'WI-03': { reg: 0, pledge: 0, students: 0 },
