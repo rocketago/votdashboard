@@ -525,11 +525,33 @@ export const SETTING_LABEL: Record<ChapterSetting, string> = {
  * A campus with no entry is listed but not drawn, rather than stopping the sync: the
  * fellowship list will grow, and a missing pin should not block a build.
  */
+/**
+ * The campuses that carry fellows, per Santiago on 2026-10-20: Iowa and Northern Iowa in
+ * Iowa, Virginia and Longwood in Virginia. Airtable's Campuses table is a superset — it
+ * still lists Drake, Grand View, Saint Ambrose, Liberty, Lynchburg, Randolph and Virginia
+ * University of Lynchburg — so without this the sync would put all ten back on every run.
+ *
+ * This is the list, not Airtable. Add a campus here when a fellow is placed there.
+ */
+const FELLOW_CAMPUSES = new Set([
+  'University of Iowa',
+  'University of Northern Iowa',
+  'University of Virginia',
+  'Longwood University',
+])
+
+/** Fellow campuses Airtable has no record of yet, with the district they sit in. */
+const FELLOW_CAMPUS_MISSING_FROM_AIRTABLE = {
+  // Cedar Falls, Black Hawk County — IA-02 on the 2026 lines.
+  'University of Northern Iowa': 'IA-02',
+}
+
 const CAMPUS_PLACE = {
   'Grand View University': [41.6198, -93.5988],
   'Drake University': [41.6031, -93.6553],
   'Saint Ambrose University': [41.5398, -90.5812],
   'University of Iowa': [41.6311, -91.5408],
+  'University of Northern Iowa': [42.5147, -92.463],
   'Longwood University': [37.309, -78.4017],
   'University of Virginia': [38.0411, -78.5055],
   'Liberty University': [37.3539, -79.1532],
@@ -562,6 +584,10 @@ async function syncCampuses() {
     const links = record.fields['Districts'] ?? []
     const district = districtName.get(links[0])
 
+    // Airtable still lists campuses we are not placing fellows at. Skip them quietly
+    // rather than failing — the table is a superset and that is not an error in itself.
+    if (name && !FELLOW_CAMPUSES.has(name)) continue
+
     if (!name) problems.push(`${record.id}: no Campus name`)
     else if (!links.length) problems.push(`${name}: not linked to a district`)
     else if (!district) problems.push(`${name}: district link resolves to nothing`)
@@ -569,6 +595,16 @@ async function syncCampuses() {
       problems.push(`${name}: district "${district}" is not a two-letter state and number`)
     else campuses.push({ name, district, state: district.slice(0, 2), at: CAMPUS_PLACE[name] })
   }
+
+  // A fellow campus Airtable does not carry yet. Added here so the dashboard is right
+  // before the table is; remove the entry once Airtable has the record.
+  for (const [name, district] of Object.entries(FELLOW_CAMPUS_MISSING_FROM_AIRTABLE)) {
+    if (!campuses.some((c) => c.name === name))
+      campuses.push({ name, district, state: district.slice(0, 2), at: CAMPUS_PLACE[name] })
+  }
+
+  const absent = [...FELLOW_CAMPUSES].filter((n) => !campuses.some((c) => c.name === n))
+  if (absent.length) problems.push(`fellow campuses not found in Airtable: ${absent.join(', ')}`)
 
   if (problems.length) fail('campuses', problems)
 
@@ -879,6 +915,17 @@ const TARGET_TYPE = {
 const TARGET_ORDER = ['soft', 'hard', 'dev', 'sdev']
 
 /**
+ * Soft-side designations Airtable still carries that are no longer ours.
+ *
+ * Santiago, 2026-10-20: IA-03 is off the soft-side board. Airtable has not been updated,
+ * so the sync would otherwise put it back on every run. Hard-side rows are untouched —
+ * IA-03 remains a hard target there, and that side is not ours to edit.
+ *
+ * Clear an entry from here once Airtable's own Target Type column is corrected.
+ */
+const SOFT_TARGET_REMOVED = new Set(['IA-03'])
+
+/**
  * The board, from the Target Type column on States and Districts.
  *
  * A district row is a race in its own right. A state row is a statewide designation —
@@ -899,6 +946,7 @@ async function syncTargets() {
     for (const choice of raw) {
       const type = TARGET_TYPE[String(choice).trim()]
       if (!type) problems.push(`${id}: unrecognised Target Type "${choice}"`)
+      else if (type === 'soft' && SOFT_TARGET_REMOVED.has(id)) continue
       else if (!byType[type].includes(id)) byType[type].push(id)
     }
   }
