@@ -32,17 +32,10 @@ export interface Campus {
 }
 
 export const CAMPUSES: Campus[] = [
-  { name: "Saint Ambrose University", state: 'IA', district: 'IA-01', lat: 41.5398, lon: -90.5812 },
   { name: "University of Iowa", state: 'IA', district: 'IA-01', lat: 41.6311, lon: -91.5408 },
-  { name: "University of Northern Iowa", state: 'IA', district: 'IA-02' },
-  { name: "Drake University", state: 'IA', district: 'IA-03', lat: 41.6031, lon: -93.6553 },
-  { name: "Grand View University", state: 'IA', district: 'IA-03', lat: 41.6198, lon: -93.5988 },
-  { name: "Liberty University", state: 'VA', district: 'VA-05', lat: 37.3539, lon: -79.1532 },
+  { name: "University of Northern Iowa", state: 'IA', district: 'IA-02', lat: 42.5147, lon: -92.463 },
   { name: "Longwood University", state: 'VA', district: 'VA-05', lat: 37.309, lon: -78.4017 },
-  { name: "Lynchburg University", state: 'VA', district: 'VA-05', lat: 37.3987, lon: -79.184 },
-  { name: "Randolph College", state: 'VA', district: 'VA-05', lat: 37.4393, lon: -79.1709 },
   { name: "University of Virginia", state: 'VA', district: 'VA-05', lat: 38.0411, lon: -78.5055 },
-  { name: "Virginia University of Lynchburg", state: 'VA', district: 'VA-05', lat: 37.3951, lon: -79.1528 },
 ]
 
 /**

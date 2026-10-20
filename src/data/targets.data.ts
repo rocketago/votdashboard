@@ -19,7 +19,6 @@ export const SOFT_TARGETS: string[] = [
   'IA',
   'IA-01',
   'IA-02',
-  'IA-03',
   'ME',
   'MT-01',
   'NC',
